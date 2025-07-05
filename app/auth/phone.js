@@ -3,6 +3,7 @@ import auth, { firebase } from '@react-native-firebase/auth';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_BASE_URL } from '../utils/api';
 
 export default function PhoneAuthScreen() {
   const router = useRouter();
@@ -42,15 +43,40 @@ export default function PhoneAuthScreen() {
       // Get Firebase ID token for backend authentication
       const idToken = await result.user.getIdToken();
       
-      // Store user info and role
-      await AsyncStorage.setItem('@user_data', JSON.stringify({
-        uid: result.user.uid,
-        phoneNumber: result.user.phoneNumber,
-        role: role || 'client',
-      }));
-      
-      // Store Firebase ID token for API requests
-      await AsyncStorage.setItem('@id_token', idToken);
+      // Call backend to get JWT token
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            idToken: idToken,
+            role: role || 'client',
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to authenticate with backend');
+        }
+
+        const authData = await response.json();
+        
+        // Store user info and JWT token
+        await AsyncStorage.setItem('@user_data', JSON.stringify({
+          uid: result.user.uid,
+          phoneNumber: result.user.phoneNumber,
+          role: role || 'client',
+          id: authData.user.id, // Backend user ID
+        }));
+        
+        // Store JWT token for API requests
+        await AsyncStorage.setItem('@jwt_token', authData.token);
+      } catch (error) {
+        console.error('Backend authentication error:', error);
+        Alert.alert('Error', 'Failed to authenticate with server. Please try again.');
+        return;
+      }
       // Navigate based on role
       if ((role || 'client') === 'client') {
         router.replace('/client/home');

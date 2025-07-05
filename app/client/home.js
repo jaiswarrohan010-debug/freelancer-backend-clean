@@ -16,16 +16,16 @@ export default function ClientHomeScreen() {
 
   const loadJobs = async () => {
     try {
-      // Get Firebase ID token for authentication
-      const idToken = await AsyncStorage.getItem('@id_token');
-      if (!idToken) {
+      // Get JWT token for authentication
+      const jwtToken = await AsyncStorage.getItem('@jwt_token');
+      if (!jwtToken) {
         console.error('No authentication token found');
         return;
       }
 
       const response = await fetch(`${API_BASE_URL}/jobs`, {
         headers: {
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${jwtToken}`
         }
       });
       if (!response.ok) throw new Error('Failed to fetch jobs');

@@ -46,9 +46,9 @@ export default function PostJobScreen() {
     }
 
     try {
-      // Get Firebase ID token for authentication
-      const idToken = await AsyncStorage.getItem('@id_token');
-      if (!idToken) {
+      // Get JWT token for authentication
+      const jwtToken = await AsyncStorage.getItem('@jwt_token');
+      if (!jwtToken) {
         Alert.alert('Error', 'Authentication token not found. Please login again.');
         return;
       }
@@ -62,7 +62,7 @@ export default function PostJobScreen() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${jwtToken}`
         },
         body: JSON.stringify(jobData),
       });
