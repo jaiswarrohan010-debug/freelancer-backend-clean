@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
@@ -41,7 +42,7 @@ export default function ClientSettingsScreen() {
     await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -53,11 +54,20 @@ export default function ClientSettingsScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
-            // Clear all stored data
-            AsyncStorage.clear();
-            // Navigate to auth screen
-            router.replace('/auth/login');
+          onPress: async () => {
+            try {
+              // Sign out from Firebase
+              await auth().signOut();
+              // Clear all stored data
+              await AsyncStorage.clear();
+              // Navigate to auth screen
+              router.replace('/');
+            } catch (error) {
+              console.error('Error during logout:', error);
+              // Still clear data and navigate even if Firebase signout fails
+              await AsyncStorage.clear();
+              router.replace('/');
+            }
           },
         },
       ]

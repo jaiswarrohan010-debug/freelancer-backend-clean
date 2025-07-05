@@ -39,12 +39,18 @@ export default function PhoneAuthScreen() {
     try {
       const credential = firebase.auth.PhoneAuthProvider.credential(verificationId, otp);
       const result = await auth().signInWithCredential(credential);
+      // Get Firebase ID token for backend authentication
+      const idToken = await result.user.getIdToken();
+      
       // Store user info and role
       await AsyncStorage.setItem('@user_data', JSON.stringify({
         uid: result.user.uid,
         phoneNumber: result.user.phoneNumber,
         role: role || 'client',
       }));
+      
+      // Store Firebase ID token for API requests
+      await AsyncStorage.setItem('@id_token', idToken);
       // Navigate based on role
       if ((role || 'client') === 'client') {
         router.replace('/client/home');

@@ -46,6 +46,13 @@ export default function PostJobScreen() {
     }
 
     try {
+      // Get Firebase ID token for authentication
+      const idToken = await AsyncStorage.getItem('@id_token');
+      if (!idToken) {
+        Alert.alert('Error', 'Authentication token not found. Please login again.');
+        return;
+      }
+
       const jobData = {
         ...formData,
         client: userId,
@@ -53,7 +60,10 @@ export default function PostJobScreen() {
       };
       const response = await fetch(`${API_BASE_URL}/jobs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify(jobData),
       });
       if (!response.ok) throw new Error('Failed to post job');

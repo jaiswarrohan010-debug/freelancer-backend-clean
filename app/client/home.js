@@ -16,13 +16,29 @@ export default function ClientHomeScreen() {
 
   const loadJobs = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/jobs`);
+      // Get Firebase ID token for authentication
+      const idToken = await AsyncStorage.getItem('@id_token');
+      if (!idToken) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/jobs`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
       if (!response.ok) throw new Error('Failed to fetch jobs');
       const jobs = await response.json();
-      // Filter jobs by current client user (replace with real user ID)
-      const clientId = 'current-user-id'; // TODO: Replace with actual logged-in user ID
-      const clientJobs = jobs.filter(job => job.client && job.client._id === clientId);
-      setPostedJobs(clientJobs);
+      
+      // Get current user data
+      const userData = await AsyncStorage.getItem('@user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        // Filter jobs by current client user
+        const clientJobs = jobs.filter(job => job.client && job.client._id === user.uid);
+        setPostedJobs(clientJobs);
+      }
     } catch (error) {
       console.error('Error loading jobs:', error);
       Alert.alert('Error', 'Failed to load jobs');
