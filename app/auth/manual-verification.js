@@ -30,6 +30,9 @@ export default function ManualVerificationScreen() {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('');
   const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pincode, setPincode] = useState('');
   
   // Date input state
   const [dateInput, setDateInput] = useState('');
@@ -197,7 +200,7 @@ export default function ManualVerificationScreen() {
   const submitVerification = async () => {
     try {
       // Validate required fields
-      if (!name || !dateOfBirth || !gender || !address) {
+      if (!name || !dateOfBirth || !gender || !address || !city || !state || !pincode) {
         Alert.alert('Error', 'Please fill in all profile details');
         return;
       }
@@ -253,9 +256,9 @@ export default function ManualVerificationScreen() {
         dob: dateOfBirth,
         gender: gender,
         address: address,
-        city: '', // Add if you have city field
-        state: '', // Add if you have state field
-        pincode: '', // Add if you have pincode field
+        city: city,
+        state: state,
+        pincode: pincode,
         documents: {
           profilePhoto: profilePhoto,
           aadharFront: documents.aadhaar.front,
@@ -403,6 +406,41 @@ export default function ManualVerificationScreen() {
             placeholderTextColor="#999"
             multiline
             numberOfLines={3}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>City *</Text>
+          <TextInput
+            style={styles.input}
+            value={city}
+            onChangeText={setCity}
+            placeholder="Enter city name"
+            placeholderTextColor="#999"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>State *</Text>
+          <TextInput
+            style={styles.input}
+            value={state}
+            onChangeText={setState}
+            placeholder="Enter state name"
+            placeholderTextColor="#999"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Pincode *</Text>
+          <TextInput
+            style={styles.input}
+            value={pincode}
+            onChangeText={setPincode}
+            placeholder="Enter 6-digit pincode"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            maxLength={6}
           />
         </View>
 
