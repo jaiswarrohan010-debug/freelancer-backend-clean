@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -225,26 +226,29 @@ export default function ManualVerificationScreen() {
 
       setLoading(true);
 
-      // Get user phone number from Firebase
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser) {
-        Alert.alert('Error', 'User not authenticated');
-        return;
+      // Get user phone number from stored user data
+      let userPhone = null;
+      try {
+        const userDataString = await AsyncStorage.getItem('@user_data');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          userPhone = userData.phoneNumber;
+          console.log('User phone from stored data:', userPhone);
+        }
+      } catch (error) {
+        console.log('Error getting stored user data:', error);
       }
 
-      const userPhone = firebaseUser.phoneNumber;
-      console.log('User phone from Firebase:', userPhone);
-      console.log('Firebase user object:', {
-        uid: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber,
-        email: firebaseUser.email
-      });
+      if (!userPhone) {
+        Alert.alert('Error', 'Unable to get user phone number. Please try logging in again.');
+        return;
+      }
 
       // Prepare verification data
       const verificationData = {
         firstName: name.split(' ')[0] || name,
         lastName: name.split(' ').slice(1).join(' ') || '',
-        email: firebaseUser.email || `${firebaseUser.uid}@firebase.user`,
+        email: `${userPhone}@user.com`, // Default email since we don't have Firebase user
         phone: userPhone,
         dob: dateOfBirth,
         gender: gender,
