@@ -91,6 +91,34 @@ export default function FreelancerSettingsScreen() {
           />
         </View>
       </View>
+      <View style={styles.section}>
+        <TouchableOpacity 
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 16,
+            borderRadius: 8,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: '#007AFF',
+            marginTop: 24,
+            justifyContent: 'center',
+          }}
+          onPress={async () => {
+            try {
+              await AsyncStorage.clear();
+              if (auth && auth().signOut) await auth().signOut();
+              Alert.alert('Success', 'Signed out and AsyncStorage cleared!');
+              router.replace('/auth/phone?role=freelancer');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to log out and clear storage.');
+            }
+          }}
+        >
+          <Ionicons name="trash-outline" size={24} color="#007AFF" />
+          <Text style={{ color: '#007AFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>Log out & Clear Storage</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }

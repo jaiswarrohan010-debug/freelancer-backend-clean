@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID Verification - People</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .verification-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .verification-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .verification-header h1 {
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+
+        .verification-header p {
+            color: #64748b;
+        }
+
+        .verification-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .verification-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e5e7eb;
+            z-index: 1;
+        }
+
+        .step {
+            position: relative;
+            z-index: 2;
+            background: white;
+            padding: 0 1rem;
+            text-align: center;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .step.active .step-circle {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .step.completed .step-circle {
+            background: #10b981;
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .step.active .step-label {
+            color: #3b82f6;
+        }
+
+        .step.completed .step-label {
+            color: #10b981;
+        }
+
+        .verification-form {
+            display: none;
+        }
+
+        .verification-form.active {
+            display: block;
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .form-section h3 {
+            color: #1e293b;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .document-upload {
+            border: 2px dashed #e5e7eb;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .document-upload:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+        }
+
+        .document-upload.dragover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .document-upload i {
+            font-size: 2rem;
+            color: #64748b;
+            margin-bottom: 1rem;
+        }
+
+        .document-upload p {
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .document-upload small {
+            color: #9ca3af;
+        }
+
+        .uploaded-documents {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .document-preview {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .document-preview img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .document-preview p {
+            font-size: 0.875rem;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .document-preview button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+        }
+
+        .btn-outline:hover {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            transition: width 0.3s;
+        }
+
+        .verification-status {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .verification-status.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .verification-status.approved {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .verification-status.rejected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .back-to-home {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .back-to-home a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-to-home a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="1000013213 (1).png" alt="People Logo" style="height: 40px; width: auto; margin-right: 10px;">
+                <h2>People</h2>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#how-it-works" class="nav-link">How It Works</a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#features" class="nav-link">Features</a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.html#about" class="nav-link">About</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="verification-container">
+        <!-- Verification Steps -->
+        <div class="verification-steps">
+            <div class="step active" data-step="1">
+                <div class="step-circle">1</div>
+                <div class="step-label">Personal Info</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-circle">2</div>
+                <div class="step-label">Upload Documents</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-circle">3</div>
+                <div class="step-label">Review & Submit</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Personal Information -->
+        <form id="verificationForm" class="verification-form active">
+            <div class="form-section">
+                <h3>Personal Information</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label for="firstName">First Name *</label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div>
+                        <label for="lastName">Last Name *</label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <label for="documentType">Document Type *</label>
+                    <select id="documentType" name="documentType" required>
+                        <option value="">Select Document Type</option>
+                        <option value="aadhar">Aadhar Card</option>
+                        <option value="pan">PAN Card</option>
+                        <option value="driving">Driving License</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <div></div>
+                <button type="button" class="btn btn-primary" onclick="nextStep()">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </form>
+
+        <!-- Step 2: Document Upload -->
+        <form id="documentForm" class="verification-form">
+            <div class="form-section">
+                <h3>Upload Documents</h3>
+                <p style="color: #64748b; margin-bottom: 1rem;">
+                    Please upload clear, high-resolution images of your documents. 
+                    Make sure all text is clearly visible and readable.
+                </p>
+
+                <div id="aadharUploads" class="document-section" style="display: none;">
+                    <h4>Aadhar Card</h4>
+                    <div class="document-upload" onclick="triggerFileInput('aadharFront')">
+                        <i class="fas fa-id-card"></i>
+                        <p>Upload Aadhar Card Front</p>
+                        <small>Click to upload or drag and drop</small>
+                        <input type="file" id="aadharFront" accept="image/*" style="display: none;">
+                    </div>
+                    <div class="document-upload" onclick="triggerFileInput('aadharBack')">
+                        <i class="fas fa-id-card"></i>
+                        <p>Upload Aadhar Card Back</p>
+                        <small>Click to upload or drag and drop</small>
+                        <input type="file" id="aadharBack" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div id="panUploads" class="document-section" style="display: none;">
+                    <h4>PAN Card</h4>
+                    <div class="document-upload" onclick="triggerFileInput('panFront')">
+                        <i class="fas fa-id-card"></i>
+                        <p>Upload PAN Card</p>
+                        <small>Click to upload or drag and drop</small>
+                        <input type="file" id="panFront" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div id="drivingUploads" class="document-section" style="display: none;">
+                    <h4>Driving License</h4>
+                    <div class="document-upload" onclick="triggerFileInput('drivingFront')">
+                        <i class="fas fa-id-card"></i>
+                        <p>Upload Driving License Front</p>
+                        <small>Click to upload or drag and drop</small>
+                        <input type="file" id="drivingFront" accept="image/*" style="display: none;">
+                    </div>
+                    <div class="document-upload" onclick="triggerFileInput('drivingBack')">
+                        <i class="fas fa-id-card"></i>
+                        <p>Upload Driving License Back</p>
+                        <small>Click to upload or drag and drop</small>
+                        <input type="file" id="drivingBack" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div id="uploadedDocuments" class="uploaded-documents"></div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="prevStep()">
+                    <i class="fas fa-arrow-left"></i> Previous
+                </button>
+                <button type="button" class="btn btn-primary" onclick="nextStep()">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </form>
+
+        <!-- Step 3: Review and Submit -->
+        <form id="reviewForm" class="verification-form">
+            <div class="form-section">
+                <h3>Review Your Information</h3>
+                <div id="reviewContent">
+                    <!-- Review content will be populated here -->
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="prevStep()">
+                    <i class="fas fa-arrow-left"></i> Previous
+                </button>
+                <button type="button" class="btn btn-primary" onclick="submitVerification()">
+                    <i class="fas fa-paper-plane"></i> Submit Verification
+                </button>
+            </div>
+        </form>
+
+        <!-- Verification Status -->
+        <div id="verificationStatus" class="verification-status" style="display: none;">
+            <div class="status-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3>Verification Submitted</h3>
+            <p>Your verification request has been submitted successfully. Our team will review your documents and get back to you within 24-48 hours.</p>
+            <p><strong>Reference ID:</strong> <span id="referenceId"></span></p>
+        </div>
+    </div>
+
+    <div class="back-to-home">
+        <a href="index.html"><i class="fas fa-home"></i> Back to Home</a>
+    </div>
+
+    <script src="verification-script.js"></script>
+</body>
+</html>

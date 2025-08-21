@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import auth from '@react-native-firebase/auth';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DrawerMenu from '../components/DrawerMenu';
 import JobCard from '../components/JobCard';
@@ -16,16 +17,22 @@ export default function ClientHomeScreen() {
 
   const loadJobs = async () => {
     try {
-      // Get JWT token for authentication
-      const jwtToken = await AsyncStorage.getItem('@jwt_token');
-      if (!jwtToken) {
+      // Get Firebase ID token for authentication
+      const user = auth().currentUser;
+      if (!user) {
+        console.error('No user is currently signed in');
+        return;
+      }
+      
+      const firebaseIdToken = await user.getIdToken();
+      if (!firebaseIdToken) {
         console.error('No authentication token found');
         return;
       }
 
       const response = await fetch(`${API_BASE_URL}/jobs`, {
         headers: {
-          'Authorization': `Bearer ${jwtToken}`
+          'Authorization': `Bearer ${firebaseIdToken}`
         }
       });
       if (!response.ok) throw new Error('Failed to fetch jobs');
@@ -35,8 +42,20 @@ export default function ClientHomeScreen() {
       const userData = await AsyncStorage.getItem('@user_data');
       if (userData) {
         const user = JSON.parse(userData);
-        // Filter jobs by current client user
-        const clientJobs = jobs.filter(job => job.client && job.client._id === user.uid);
+        console.log('Current user data:', user);
+        console.log('All jobs:', jobs);
+        
+        // Filter jobs by current client user - use MongoDB ID
+        const clientJobs = jobs.filter(job => {
+          console.log('Job client:', job.client);
+          console.log('User ID:', user.id || user._id);
+          // Exclude paid jobs from dashboard - they should appear in history
+          return job.client && 
+                 (job.client._id === (user.id || user._id) || job.client === (user.id || user._id)) &&
+                 job.status !== 'paid';
+        });
+        
+        console.log('Filtered client jobs:', clientJobs);
         setPostedJobs(clientJobs);
       }
     } catch (error) {
@@ -54,6 +73,13 @@ export default function ClientHomeScreen() {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  // Refresh jobs when screen comes into focus (e.g., when returning from job details)
+  useFocusEffect(
+    useCallback(() => {
+      loadJobs();
+    }, [])
+  );
 
   const handleMenuPress = () => {
     setIsDrawerVisible(!isDrawerVisible);
@@ -100,6 +126,29 @@ export default function ClientHomeScreen() {
         <Text style={styles.headerTitle}>Client Dashboard</Text>
         <View style={styles.placeholder} />
       </View>
+
+      {/* Log Firebase ID Token Button */}
+      <TouchableOpacity
+        style={{ backgroundColor: '#34c759', padding: 12, borderRadius: 8, alignItems: 'center', margin: 16 }}
+        onPress={async () => {
+          try {
+            const user = auth().currentUser;
+            if (!user) {
+              console.log('No user is currently signed in.');
+              Alert.alert('Error', 'No user is currently signed in.');
+              return;
+            }
+            const idToken = await user.getIdToken();
+            console.log('FIREBASE ID TOKEN:', idToken);
+            Alert.alert('ID Token logged to Metro console!');
+          } catch (error) {
+            console.log('Error getting ID token:', error);
+            Alert.alert('Error', error.message);
+          }
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Log Firebase ID Token</Text>
+      </TouchableOpacity>
 
       {isMenuVisible && (
         <View style={styles.menu}>
@@ -149,9 +198,9 @@ export default function ClientHomeScreen() {
         {postedJobs.length > 0 ? (
           postedJobs.map((job) => (
             <JobCard
-              key={job.id}
+              key={job._id}
               job={job}
-              onPress={() => router.push(`/client/job-details/${job.id}`)}
+              role="client"
             />
           ))
         ) : (

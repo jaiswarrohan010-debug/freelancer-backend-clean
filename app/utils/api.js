@@ -1,1 +1,2 @@
+// Use deployed backend (works with tunnel)
 export const API_BASE_URL = 'https://freelancer-backend-jv21.onrender.com/api'; 

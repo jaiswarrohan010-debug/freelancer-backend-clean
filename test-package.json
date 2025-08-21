@@ -1,0 +1,15 @@
+{
+  "name": "surepaas-api-test",
+  "version": "1.0.0",
+  "description": "Test script for SurePaaS Sandbox API",
+  "main": "test-surepaas-api.js",
+  "scripts": {
+    "test": "node test-surepaas-api.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "keywords": ["surepaas", "api", "test", "payment"],
+  "author": "",
+  "license": "MIT"
+}

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from './context/ThemeContext';
 import { getMessagesByJobId, markMessagesAsRead, saveMessage } from './utils/messageStorage';
 
@@ -13,6 +13,7 @@ export default function MessagesScreen() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadCurrentUser();
@@ -41,6 +42,12 @@ export default function MessagesScreen() {
     } catch (error) {
       console.error('Error loading messages:', error);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadMessages();
+    setRefreshing(false);
   };
 
   const handleSend = async () => {
@@ -120,7 +127,9 @@ export default function MessagesScreen() {
         renderItem={renderMessage}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.messagesList}
-        inverted
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
 
       <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>

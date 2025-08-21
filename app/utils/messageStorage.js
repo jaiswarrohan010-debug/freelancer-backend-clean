@@ -32,7 +32,9 @@ export const getMessages = async () => {
 export const getMessagesByJobId = async (jobId) => {
   try {
     const messages = await getMessages();
-    return messages.filter(message => message.jobId === jobId);
+    const jobMessages = messages.filter(message => message.jobId === jobId);
+    // Sort by timestamp in ascending order (oldest first, newest last)
+    return jobMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   } catch (error) {
     console.error('Error getting messages by job ID:', error);
     return [];

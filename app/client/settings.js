@@ -2,97 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-
-const SETTINGS_STORAGE_KEY = '@client_settings';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ClientSettingsScreen() {
   const router = useRouter();
-  const { colors, toggleTheme, isDarkMode } = useTheme();
-  const [settings, setSettings] = useState({
-    darkMode: false,
-    notifications: true,
-    notificationSound: true,
-    emailNotifications: true,
-    locationServices: true,
-    autoSave: true,
-  });
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const savedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  };
-
-  const toggleSetting = async (key) => {
-    let newSettings = { ...settings, [key]: !settings[key] };
-    if (key === 'darkMode') toggleTheme();
-    setSettings(newSettings);
-    await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
-  };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Sign out from Firebase
-              await auth().signOut();
-              // Clear all stored data
-              await AsyncStorage.clear();
-              // Navigate to auth screen
-              router.replace('/');
-            } catch (error) {
-              console.error('Error during logout:', error);
-              // Still clear data and navigate even if Firebase signout fails
-              await AsyncStorage.clear();
-              router.replace('/');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      // Sign out from Firebase
+      await auth().signOut();
+      // Clear all stored data
+      await AsyncStorage.clear();
+      // Navigate to auth screen
+      router.replace('/auth/login');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
   };
-
-  const renderSettingItem = ({ icon, title, description, key }) => (
-    <View style={styles.settingItem}>
-      <View style={styles.settingInfo}>
-        <View style={styles.settingIcon}>
-          <Ionicons name={icon} size={24} color="#007AFF" />
-        </View>
-        <View style={styles.settingText}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          <Text style={styles.settingDescription}>{description}</Text>
-        </View>
-      </View>
-      <Switch
-        value={settings[key]}
-        onValueChange={() => toggleSetting(key)}
-        trackColor={{ false: '#ddd', true: '#007AFF' }}
-        thumbColor="#fff"
-      />
-    </View>
-  );
 
   return (
     <ScrollView style={styles.container}>
@@ -108,64 +34,29 @@ export default function ClientSettingsScreen() {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Appearance</Text>
-          {renderSettingItem({
-            icon: 'moon-outline',
-            title: 'Dark Mode',
-            description: 'Switch between light and dark theme',
-            key: 'darkMode',
-          })}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
-          {renderSettingItem({
-            icon: 'notifications-outline',
-            title: 'Push Notifications',
-            description: 'Receive notifications about job updates',
-            key: 'notifications',
-          })}
-          {renderSettingItem({
-            icon: 'volume-high-outline',
-            title: 'Notification Sound',
-            description: 'Play sound for notifications',
-            key: 'notificationSound',
-          })}
-          {renderSettingItem({
-            icon: 'mail-outline',
-            title: 'Email Notifications',
-            description: 'Receive email updates about your jobs',
-            key: 'emailNotifications',
-          })}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy & Location</Text>
-          {renderSettingItem({
-            icon: 'location-outline',
-            title: 'Location Services',
-            description: 'Allow app to access your location',
-            key: 'locationServices',
-          })}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data & Storage</Text>
-          {renderSettingItem({
-            icon: 'save-outline',
-            title: 'Auto-save',
-            description: 'Automatically save job drafts',
-            key: 'autoSave',
-          })}
-        </View>
-
+        {/* Add your settings UI here */}
         <TouchableOpacity 
           style={styles.logoutButton}
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
           <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.logoutButton, { borderColor: '#007AFF', marginTop: 16 }]}
+          onPress={async () => {
+            try {
+              await auth().signOut();
+              await AsyncStorage.clear();
+              Alert.alert('Success', 'Signed out and AsyncStorage cleared!');
+              router.replace('/auth/login');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to log out and clear storage.');
+            }
+          }}
+        >
+          <Ionicons name="trash-outline" size={24} color="#007AFF" />
+          <Text style={[styles.logoutText, { color: '#007AFF' }]}>Log out & Clear Storage</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -202,60 +93,16 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  settingInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  settingText: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#FF3B30',
-    borderRadius: 8,
-    padding: 16,
-    marginTop: 20,
+    marginTop: 40,
+    justifyContent: 'center',
   },
   logoutText: {
     color: '#FF3B30',

@@ -1,6 +1,11 @@
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
+import { LogBox } from 'react-native';
+LogBox.ignoreLogs([
+  'Invalid prop `style` supplied to `React.Fragment`'
+]);
 
 // Import screens
 import ClientHomeScreen from './screens/ClientHomeScreen';

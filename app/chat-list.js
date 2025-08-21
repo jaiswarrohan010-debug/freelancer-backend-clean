@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from './context/ThemeContext';
 import { getChats } from './utils/messageStorage';
 
@@ -11,6 +11,7 @@ export default function ChatListScreen() {
   const { colors } = useTheme();
   const [chats, setChats] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadCurrentUser();
@@ -41,6 +42,12 @@ export default function ChatListScreen() {
     } catch (error) {
       console.error('Error loading chats:', error);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadChats();
+    setRefreshing(false);
   };
 
   const handleChatPress = (chat) => {
@@ -104,6 +111,9 @@ export default function ChatListScreen() {
         renderItem={renderChatItem}
         keyExtractor={(item) => `${item.userId}_${item.jobId}`}
         contentContainerStyle={styles.chatList}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
     </View>
   );

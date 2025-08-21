@@ -10,16 +10,15 @@ export default function DrawerMenu({ visible, onClose, userRole }) {
   const menuItems = userRole === 'client' 
     ? [
         { icon: 'home-outline', label: 'Dashboard', route: '/client/home' },
-        { icon: 'briefcase-outline', label: 'Post Job', route: '/client/post-job' },
-        { icon: 'list-outline', label: 'My Jobs', route: '/client/my-jobs' },
+        { icon: 'time-outline', label: 'History', route: '/client/history' },
         { icon: 'chatbubble-ellipses-outline', label: 'Messages', route: '/chat-list' },
         { icon: 'person-outline', label: 'Profile', route: '/client/profile' },
         { icon: 'settings-outline', label: 'Settings', route: '/client/settings' },
       ]
     : [
         { icon: 'home-outline', label: 'Dashboard', route: '/freelancer/home' },
-        { icon: 'search-outline', label: 'Find Jobs', route: '/freelancer/find-jobs' },
-        { icon: 'briefcase-outline', label: 'My Applications', route: '/freelancer/applications' },
+        { icon: 'receipt-outline', label: 'Orders', route: '/freelancer/orders' },
+        { icon: 'wallet-outline', label: 'Wallet', route: '/freelancer/wallet' },
         { icon: 'chatbubble-ellipses-outline', label: 'Messages', route: '/chat-list' },
         { icon: 'person-outline', label: 'Profile', route: '/freelancer/profile' },
         { icon: 'settings-outline', label: 'Settings', route: '/freelancer/settings' },

@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
+import auth from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_BASE_URL } from './utils/api';
 
 const PROFILE_STORAGE_KEY = '@freelancer_app_profile';
 
@@ -16,7 +16,11 @@ export default function ProfileScreen() {
     gender: '',
     email: '',
     address: '',
+    phone: '',
   });
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -24,50 +28,109 @@ export default function ProfileScreen() {
 
   const loadProfile = async () => {
     try {
-      const profileData = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
-      if (profileData) {
-        const data = JSON.parse(profileData);
-        setFormData(data);
-        if (data.profileImage) {
-          setProfileImage(data.profileImage);
-        }
+      setLoading(true);
+      const firebaseUser = auth().currentUser;
+      if (!firebaseUser) {
+        Alert.alert('Error', 'No user is currently signed in');
+        setLoading(false);
+        return;
       }
+      const firebaseIdToken = await firebaseUser.getIdToken();
+      console.log('Firebase UID:', firebaseUser.uid);
+      // Fetch MongoDB user ID using Firebase UID
+      const userDataRes = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`, {
+        headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+      });
+      if (!userDataRes.ok) {
+        setLoading(false);
+        Alert.alert('Error', 'Failed to fetch user ID');
+        return;
+      }
+      const userData = await userDataRes.json();
+      setUserId(userData._id);
+      console.log('MongoDB userId:', userData._id);
+      // Fetch profile data
+      const profileRes = await fetch(`${API_BASE_URL}/users/${userData._id}`, {
+        headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+      });
+      if (!profileRes.ok) {
+        setLoading(false);
+        Alert.alert('Error', 'Failed to fetch profile');
+        return;
+      }
+      const profile = await profileRes.json();
+      setFormData({
+        name: profile.name || '',
+        gender: profile.gender || '',
+        email: profile.email || '',
+        address: profile.address || '',
+        phone: profile.phone || '',
+      });
+      if (profile.profileImage) setProfileImage(profile.profileImage);
+      setIsVerified(profile.isVerified === true);
     } catch (error) {
       console.error('Error loading profile:', error);
-    }
-  };
-
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant permission to access your photos');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
+      Alert.alert('Error', 'Failed to load profile');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSave = async () => {
     try {
-      const profileData = {
-        ...formData,
-        profileImage,
+      setLoading(true);
+      const firebaseUser = auth().currentUser;
+      if (!firebaseUser) {
+        Alert.alert('Error', 'No user is currently signed in');
+        setLoading(false);
+        return;
+      }
+      const firebaseIdToken = await firebaseUser.getIdToken();
+      console.log('Firebase UID:', firebaseUser.uid);
+      console.log('MongoDB userId:', userId);
+      // PATCH only editable fields (email and phone)
+      const updateData = {
+        email: formData.email,
+        phone: formData.phone,
       };
-      await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileData));
+      const patchUrl = `${API_BASE_URL}/users/${userId}`;
+      console.log('PATCH URL:', patchUrl);
+      const response = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${firebaseIdToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Profile update failed (first 200 chars):', text.slice(0, 200));
+        let errorMessage = 'Failed to update profile';
+        try {
+          const errorData = JSON.parse(text);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = text;
+        }
+        throw new Error(errorMessage);
+      }
+      const updatedProfile = await response.json();
+      setFormData({
+        name: updatedProfile.name || formData.name,
+        gender: updatedProfile.gender || formData.gender,
+        email: updatedProfile.email || '',
+        address: updatedProfile.address || formData.address,
+        phone: updatedProfile.phone || '',
+      });
+      if (updatedProfile.profileImage) setProfileImage(updatedProfile.profileImage);
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save profile');
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,10 +155,8 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.content}>
-        <TouchableOpacity 
-          style={styles.imageContainer}
-          onPress={isEditing ? pickImage : undefined}
-        >
+        {/* Profile Photo - Read Only */}
+        <View style={styles.imageContainer}>
           {profileImage ? (
             <Image source={{ uri: profileImage }} style={styles.profileImage} />
           ) : (
@@ -103,36 +164,45 @@ export default function ProfileScreen() {
               <Ionicons name="person" size={40} color="#666" />
             </View>
           )}
-          {isEditing && (
-            <View style={styles.editOverlay}>
-              <Ionicons name="camera" size={24} color="#fff" />
+          {!isVerified && (
+            <View style={styles.verificationBadge}>
+              <Text style={styles.verificationText}>Pending Verification</Text>
             </View>
           )}
-        </TouchableOpacity>
+          {isVerified && (
+            <View style={styles.verifiedBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+              <Text style={styles.verifiedText}>Verified</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.form}>
+          {/* Full Name - Read Only */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.readOnlyInput]}
               value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
-              editable={isEditing}
-              placeholder="Enter your full name"
+              editable={false}
+              placeholder="Will be filled after verification"
             />
+            <Text style={styles.readOnlyNote}>Auto-filled after admin approval</Text>
           </View>
 
+          {/* Gender - Read Only */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Gender</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.readOnlyInput]}
               value={formData.gender}
-              onChangeText={(text) => setFormData({ ...formData, gender: text })}
-              editable={isEditing}
-              placeholder="Enter your gender"
+              editable={false}
+              placeholder="Will be filled after verification"
             />
+            <Text style={styles.readOnlyNote}>Auto-filled after admin approval</Text>
           </View>
 
+          {/* Email - Editable */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -145,16 +215,30 @@ export default function ProfileScreen() {
             />
           </View>
 
+          {/* Address - Read Only */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Address</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, styles.readOnlyInput]}
               value={formData.address}
-              onChangeText={(text) => setFormData({ ...formData, address: text })}
-              editable={isEditing}
-              placeholder="Enter your address"
+              editable={false}
+              placeholder="Will be filled after verification"
               multiline
               numberOfLines={3}
+            />
+            <Text style={styles.readOnlyNote}>Auto-filled after admin approval</Text>
+          </View>
+
+          {/* Phone - Editable */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phone</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.phone}
+              onChangeText={(text) => setFormData({ ...formData, phone: text })}
+              editable={isEditing}
+              placeholder="Enter your phone number"
+              keyboardType="phone-pad"
             />
           </View>
 
@@ -207,6 +291,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     alignItems: 'center',
     marginBottom: 24,
+    position: 'relative',
   },
   profileImage: {
     width: 120,
@@ -221,16 +306,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editOverlay: {
+  verificationBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#007AFF',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    bottom: -10,
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  verificationText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -10,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+  },
+  verifiedText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   form: {
     gap: 16,
@@ -251,6 +354,17 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#f9f9f9',
+  },
+  readOnlyInput: {
+    backgroundColor: '#f5f5f5',
+    color: '#666',
+    borderColor: '#e0e0e0',
+  },
+  readOnlyNote: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   textArea: {
     height: 100,

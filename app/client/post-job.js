@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -18,6 +19,40 @@ export default function PostJobScreen() {
     genderPreference: 'Any',
   });
   const [userId, setUserId] = useState(null);
+  const [address, setAddress] = useState({
+    flat: '',
+    street: '',
+    landmark: '',
+    pincode: '',
+    city: '',
+    state: '',
+    postOfficeName: '',
+  });
+  // Autofill city/state and post office from pincode
+  useEffect(() => {
+    if (address.pincode.length === 6) {
+      fetch(`https://api.postalpincode.in/pincode/${address.pincode}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+            const postOffice = data[0].PostOffice[0];
+            setAddress(addr => ({ 
+              ...addr, 
+              city: postOffice.District || '', 
+              state: postOffice.State || '',
+              postOfficeName: postOffice.Name || ''
+            }));
+          } else {
+            setAddress(addr => ({ ...addr, city: '', state: '', postOfficeName: '' }));
+          }
+        })
+        .catch(() => {
+          setAddress(addr => ({ ...addr, city: '', state: '', postOfficeName: '' }));
+        });
+    } else {
+      setAddress(addr => ({ ...addr, city: '', state: '', postOfficeName: '' }));
+    }
+  }, [address.pincode]);
 
   useEffect(() => {
     const loadUserId = async () => {
@@ -34,8 +69,24 @@ export default function PostJobScreen() {
     loadUserId();
   }, []);
 
+  // Check if all required fields are filled
+  const isFormComplete = () => {
+    return (
+      formData.title.trim() !== '' &&
+      formData.description.trim() !== '' &&
+      formData.price.trim() !== '' &&
+      address.flat.trim() !== '' &&
+      address.street.trim() !== '' &&
+      address.landmark.trim() !== '' &&
+      address.pincode.trim() !== '' &&
+      address.city.trim() !== '' &&
+      address.state.trim() !== '' &&
+      formData.peopleRequired.trim() !== ''
+    );
+  };
+
   const handleSave = async () => {
-    if (!formData.title || !formData.description || !formData.price || !formData.location || !formData.peopleRequired) {
+    if (!isFormComplete()) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -46,26 +97,45 @@ export default function PostJobScreen() {
     }
 
     try {
-      // Get JWT token for authentication
-      const jwtToken = await AsyncStorage.getItem('@jwt_token');
-      if (!jwtToken) {
+      // Get Firebase ID token for authentication
+      const user = auth().currentUser;
+      if (!user) {
+        Alert.alert('Error', 'No user is currently signed in. Please login again.');
+        return;
+      }
+      
+      const firebaseIdToken = await user.getIdToken();
+      if (!firebaseIdToken) {
         Alert.alert('Error', 'Authentication token not found. Please login again.');
         return;
       }
 
       const jobData = {
         ...formData,
-        client: userId,
+        price: Number(formData.price),
+        peopleRequired: Number(formData.peopleRequired),
+        flat: address.flat,
+        street: address.street,
+        landmark: address.landmark,
+        pincode: address.pincode,
+        city: address.city,
+        state: address.state,
+        postOfficeName: address.postOfficeName,
         status: 'open',
       };
+      console.log('Firebase ID token:', firebaseIdToken.substring(0, 20) + '...');
+      console.log('Posting job data:', jobData);
       const response = await fetch(`${API_BASE_URL}/jobs`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`
+          'Authorization': `Bearer ${firebaseIdToken}`
         },
         body: JSON.stringify(jobData),
       });
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
       if (!response.ok) throw new Error('Failed to post job');
       Alert.alert('Success', 'Job posted successfully', [
         {
@@ -74,7 +144,8 @@ export default function PostJobScreen() {
         },
       ]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to post job');
+      console.error('Error posting job:', error);
+      Alert.alert('Error', 'Failed to post job: ' + error.message);
     }
   };
 
@@ -114,7 +185,7 @@ export default function PostJobScreen() {
       >
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Job Title *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Job Title</Text>
             <TextInput
               style={[styles.input, { 
                 backgroundColor: colors.card,
@@ -129,7 +200,7 @@ export default function PostJobScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Description *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea, { 
                 backgroundColor: colors.card,
@@ -146,7 +217,7 @@ export default function PostJobScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Price (₹) *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Price (₹)</Text>
             <TextInput
               style={[styles.input, { 
                 backgroundColor: colors.card,
@@ -161,23 +232,75 @@ export default function PostJobScreen() {
             />
           </View>
 
+          {/* Address Fields */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Flat / Building Name</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.card,
-                color: colors.text,
-                borderColor: colors.border
-              }]}
-              value={formData.location}
-              onChangeText={(text) => setFormData({ ...formData, location: text })}
-              placeholder="Enter location"
+              style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+              value={address.flat}
+              onChangeText={text => setAddress(addr => ({ ...addr, flat: text }))}
+              placeholder="Flat or building name"
               placeholderTextColor={colors.placeholder}
             />
           </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Street Name & Locality</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+              value={address.street}
+              onChangeText={text => setAddress(addr => ({ ...addr, street: text }))}
+              placeholder="Street name and locality"
+              placeholderTextColor={colors.placeholder}
+            />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Landmark</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+              value={address.landmark}
+              onChangeText={text => setAddress(addr => ({ ...addr, landmark: text }))}
+              placeholder="Landmark"
+              placeholderTextColor={colors.placeholder}
+            />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Pincode</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+              value={address.pincode}
+              onChangeText={text => setAddress(addr => ({ ...addr, pincode: text }))}
+              placeholder="Pincode"
+              placeholderTextColor={colors.placeholder}
+              keyboardType="numeric"
+              maxLength={6}
+            />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>City & State</Text>
+            <View style={styles.rowContainer}>
+              <View style={styles.halfWidth}>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                  value={address.city}
+                  editable={false}
+                  placeholder="City"
+                  placeholderTextColor={colors.placeholder}
+                />
+              </View>
+              <View style={styles.halfWidth}>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                  value={address.state}
+                  editable={false}
+                  placeholder="State"
+                  placeholderTextColor={colors.placeholder}
+                />
+              </View>
+            </View>
+          </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>People Required *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>People Required</Text>
             <TextInput
               style={[styles.input, { 
                 backgroundColor: colors.card,
@@ -217,11 +340,25 @@ export default function PostJobScreen() {
             </View>
           </View>
 
+
+          
           <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.submitButton, 
+              { 
+                backgroundColor: isFormComplete() ? colors.primary : '#ccc',
+                opacity: isFormComplete() ? 1 : 0.6
+              }
+            ]}
             onPress={handleSave}
+            disabled={!isFormComplete()}
           >
-            <Text style={styles.submitButtonText}>Post Job</Text>
+            <Text style={[
+              styles.submitButtonText,
+              { color: isFormComplete() ? '#fff' : '#666' }
+            ]}>
+              Post Job
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -292,6 +429,13 @@ const styles = StyleSheet.create({
   },
   genderOptionText: {
     fontSize: 16,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  halfWidth: {
+    flex: 0.48,
   },
   submitButton: {
     padding: 16,
