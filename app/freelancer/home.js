@@ -122,7 +122,10 @@ export default function FreelancerHomeScreen() {
         profile.name && typeof profile.name === 'string' && profile.name.trim() &&
         profile.address && typeof profile.address === 'string' && profile.address.trim() &&
         profile.gender && typeof profile.gender === 'string' && profile.gender.trim() &&
-        profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim()
+        profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim() &&
+        profile.email && typeof profile.email === 'string' && profile.email.trim() &&
+        profile.experience && typeof profile.experience === 'string' && profile.experience.trim() &&
+        profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0
       );
       
       // Profile is complete only if verified AND has all required fields
@@ -138,6 +141,9 @@ export default function FreelancerHomeScreen() {
         address: Boolean(profile.address && typeof profile.address === 'string' && profile.address.trim()),
         gender: Boolean(profile.gender && typeof profile.gender === 'string' && profile.gender.trim()),
         profileImage: Boolean(profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim()),
+        email: Boolean(profile.email && typeof profile.email === 'string' && profile.email.trim()),
+        experience: Boolean(profile.experience && typeof profile.experience === 'string' && profile.experience.trim()),
+        skills: Boolean(profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0),
         isProfileComplete,
         isVerified: profile.isVerified === true,
         isComplete
