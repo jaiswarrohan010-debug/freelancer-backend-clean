@@ -148,7 +148,8 @@ export default function FreelancerHomeScreen() {
         skills: Boolean(profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0),
         isProfileComplete,
         isVerified: profile.isVerified === true,
-        isComplete
+        isComplete,
+        freelancerId: profile.freelancerId
       });
       setProfileComplete(isComplete);
       setProfileChecked(true);
