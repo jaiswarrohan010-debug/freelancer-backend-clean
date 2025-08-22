@@ -28,11 +28,21 @@ export default function FreelancerProfileScreen() {
   const [reEnterBankAccountNumber, setReEnterBankAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [bankAccountError, setBankAccountError] = useState('');
+  const [accountNumberMatchError, setAccountNumberMatchError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const successAnim = useState(new Animated.Value(0))[0];
   const [isEditing, setIsEditing] = useState(true); // Allow editing on first load
   const [profileSaved, setProfileSaved] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+
+  // Function to validate account number matching
+  const validateAccountNumberMatch = (account1, account2) => {
+    if (account1 && account2 && account1 !== account2) {
+      setAccountNumberMatchError('Account number not matching');
+    } else {
+      setAccountNumberMatchError('');
+    }
+  };
 
   // No user existence check on mount, just get userId from storage if present
   useEffect(() => {
@@ -154,6 +164,7 @@ export default function FreelancerProfileScreen() {
         }
       }
       setBankAccountError('');
+      setAccountNumberMatchError('');
 
       const firebaseUser = auth().currentUser;
       if (!firebaseUser) {
@@ -397,7 +408,10 @@ export default function FreelancerProfileScreen() {
               <TextInput
                 style={[styles.input, bankAccountError ? styles.inputError : null]}
                 value={bankAccountNumber}
-                onChangeText={setBankAccountNumber}
+                onChangeText={(text) => {
+                  setBankAccountNumber(text);
+                  validateAccountNumberMatch(text, reEnterBankAccountNumber);
+                }}
                 editable={isEditing}
                 placeholder="Enter your bank account number"
                 keyboardType="numeric"
@@ -411,7 +425,10 @@ export default function FreelancerProfileScreen() {
               <TextInput
                 style={[styles.input, bankAccountError ? styles.inputError : null]}
                 value={reEnterBankAccountNumber}
-                onChangeText={setReEnterBankAccountNumber}
+                onChangeText={(text) => {
+                  setReEnterBankAccountNumber(text);
+                  validateAccountNumberMatch(bankAccountNumber, text);
+                }}
                 editable={isEditing}
                 placeholder="Re-enter your bank account number"
                 keyboardType="numeric"
@@ -434,6 +451,9 @@ export default function FreelancerProfileScreen() {
 
             {bankAccountError ? (
               <Text style={styles.errorText}>{bankAccountError}</Text>
+            ) : null}
+            {accountNumberMatchError ? (
+              <Text style={styles.errorText}>{accountNumberMatchError}</Text>
             ) : null}
           </View>
 
