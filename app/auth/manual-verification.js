@@ -1,5 +1,5 @@
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,7 +16,6 @@ import {
     View
 } from 'react-native';
 import { API_BASE_URL } from '../utils/api';
-import { auth } from '../utils/firebase';
 
 export default function ManualVerificationScreen() {
   const router = useRouter();
@@ -131,12 +130,51 @@ export default function ManualVerificationScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
-        setProfilePhoto(result.assets[0].uri);
-        setUploadStatus(prev => ({
-          ...prev,
-          profilePhoto: true
-        }));
-        Alert.alert('Success', 'Profile photo captured successfully!');
+        const imageUri = result.assets[0].uri;
+        setProfilePhoto(imageUri);
+        
+        // Upload profile photo to server
+        try {
+          const formData = new FormData();
+          formData.append('document', {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: `profile_photo_${Date.now()}.jpg`
+          });
+          
+          console.log('Uploading profile photo:', imageUri);
+          
+          const response = await fetch(`${API_BASE_URL}/upload/single`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          
+          console.log('Profile photo upload response status:', response.status);
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('Profile photo upload result:', result);
+            const completeProfileUrl = result.file.url.startsWith('http') 
+              ? result.file.url 
+              : `https://freelancer-backend-jv21.onrender.com${result.file.url}`;
+            setProfilePhoto(completeProfileUrl); // Update with complete server URL
+            setUploadStatus(prev => ({
+              ...prev,
+              profilePhoto: true
+            }));
+            Alert.alert('Success', 'Profile photo uploaded successfully!');
+          } else {
+            const errorText = await response.text();
+            console.error('Profile photo upload response error:', errorText);
+            throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+          }
+        } catch (uploadError) {
+          console.error('Profile photo upload error:', uploadError);
+          Alert.alert('Error', `Failed to upload profile photo: ${uploadError.message}`);
+        }
       }
     } catch (error) {
       console.error('Error taking profile photo:', error);
@@ -156,16 +194,7 @@ export default function ManualVerificationScreen() {
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         
-        // Update documents state
-        setDocuments(prev => ({
-          ...prev,
-          [documentType]: {
-            ...prev[documentType],
-            [side]: imageUri
-          }
-        }));
-
-        // Upload to server
+        // Upload to server first, then update state with server URL
         await uploadDocument(documentType, side, imageUri);
       }
     } catch (error) {
@@ -178,8 +207,55 @@ export default function ManualVerificationScreen() {
     try {
       setUploading(true);
       
-      // For mock testing, skip actual upload
-      console.log('Mock upload for:', documentType, side, imageUri);
+      console.log('Uploading document:', documentType, side, imageUri);
+      
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('document', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: `${documentType}_${side}_${Date.now()}.jpg`
+      });
+      
+      // Upload file to server
+      const response = await fetch(`${API_BASE_URL}/upload/single`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Upload response status:', response.status);
+      console.log('Upload response headers:', response.headers);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload response error:', errorText);
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Upload result:', result);
+      console.log('Server URL received:', result.file.url);
+      
+      // Update documents state with complete server URL
+      const completeUrl = result.file.url.startsWith('http') 
+        ? result.file.url 
+        : `https://freelancer-backend-jv21.onrender.com${result.file.url}`;
+      
+      setDocuments(prev => {
+        const newState = {
+          ...prev,
+          [documentType]: {
+            ...prev[documentType],
+            [side]: completeUrl
+          }
+        };
+        console.log('Updated documents state:', newState);
+        console.log('Complete URL for image:', completeUrl);
+        return newState;
+      });
       
       // Update upload status
       setUploadStatus(prev => ({
@@ -191,7 +267,7 @@ export default function ManualVerificationScreen() {
       
     } catch (error) {
       console.error('Upload error:', error);
-      Alert.alert('Error', 'Failed to upload document');
+      Alert.alert('Error', `Failed to upload document: ${error.message}`);
     } finally {
       setUploading(false);
     }
@@ -316,6 +392,15 @@ export default function ManualVerificationScreen() {
   const renderDocumentUpload = (documentType, side, label, required = true) => {
     const isUploaded = uploadStatus[`${documentType}${side.charAt(0).toUpperCase() + side.slice(1)}`];
     const imageUri = documents[documentType]?.[side];
+    
+    console.log(`Rendering ${documentType} ${side}:`, {
+      imageUri,
+      isUploaded,
+      documents: documents[documentType]
+    });
+
+    // Check if imageUri is a valid URL
+    const isValidUrl = imageUri && (imageUri.startsWith('http://') || imageUri.startsWith('https://') || imageUri.startsWith('file://'));
 
     return (
       <View style={styles.documentSection}>
@@ -328,8 +413,17 @@ export default function ManualVerificationScreen() {
           onPress={() => pickImage(documentType, side)}
           disabled={uploading}
         >
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.documentImage} />
+          {imageUri && isValidUrl ? (
+            <Image 
+              source={{ uri: imageUri }} 
+              style={styles.documentImage}
+              onError={(error) => {
+                console.error('Image load error:', error);
+                console.error('Failed URL:', imageUri);
+              }}
+              onLoad={() => console.log('Image loaded successfully:', imageUri)}
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.uploadContent}>
               <Text style={styles.uploadText}>📷</Text>
