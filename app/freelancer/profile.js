@@ -85,8 +85,8 @@ export default function FreelancerProfileScreen() {
               console.log('No bank details found in profile');
             }
             
-            // Preload profile image with full URL if needed
-            if (profile.profileImage) {
+            // Preload profile image with full URL if needed (only if verified)
+            if (profile.isVerified && profile.profileImage) {
               // Remove '/api' from API_BASE_URL for static images
               const baseUrl = API_BASE_URL.replace(/\/api$/, '');
               const imgUrl = profile.profileImage.startsWith('http') ? profile.profileImage : `${baseUrl}${profile.profileImage}`;
