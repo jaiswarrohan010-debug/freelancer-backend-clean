@@ -415,7 +415,6 @@ export default function FreelancerProfileScreen() {
                 editable={isEditing}
                 placeholder="Re-enter your bank account number"
                 keyboardType="numeric"
-                secureTextEntry
                 placeholderTextColor="#999"
               />
             </View>
