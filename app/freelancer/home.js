@@ -239,7 +239,7 @@ export default function FreelancerHomeScreen() {
       </View>
 
       {/* Profile incomplete message - only show when verified but profile incomplete */}
-      {profileChecked && isVerified && !isProfileComplete && (
+      {profileChecked && isVerified && !profileComplete && (
         <View style={{
           backgroundColor: '#fff0f0',
           borderRadius: 8,
@@ -373,7 +373,7 @@ export default function FreelancerHomeScreen() {
                       Alert.alert('Verification Required', 'Your profile is under review. You cannot pick up work until your documents are approved.');
                       return;
                     }
-                    if (!isProfileComplete) {
+                    if (!profileComplete) {
                       Alert.alert('Profile Incomplete', 'Please complete your profile before picking up work.');
                       return;
                     }
