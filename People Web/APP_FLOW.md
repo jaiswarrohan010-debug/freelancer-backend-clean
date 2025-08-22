@@ -76,15 +76,20 @@ Unverified User → Submit Verification → Pending → Admin Review → Approve
 
 ### **After Admin Approval:**
 1. **User Status Updates** → `isVerified: true`, `verificationStatus: 'approved'`
-2. **Freelancer Dashboard Updates**:
-   - ✅ **"Your profile is under review"** → **"Your profile has been verified"**
+2. **Freelancer ID Generation** → Unique 5-10 digit ID assigned
+3. **Freelancer Dashboard Updates**:
+   - ✅ **"Your profile has been verified"** → **"Your profile has been verified"**
+   - ✅ **"Freelancer ID: XXXXXXXX"** → Shows unique ID
    - ✅ **New line appears**: **"Complete profile to pickup work"**
-3. **Profile Page Auto-fill**:
+4. **Profile Page Auto-fill**:
    - ✅ **Full Name** (from verification data)
    - ✅ **Gender** (from verification data)
    - ✅ **Address** (from verification data)
    - ✅ **Pincode** (from verification data)
    - ✅ **Email** (freelancer fills manually)
+5. **Profile Page Display**:
+   - ✅ **Freelancer ID Badge** → Blue badge showing "ID: XXXXXXXX"
+   - ✅ **Verified Badge** → Green badge showing "Verified"
 
 ### **Profile Completion Flow:**
 1. **User clicks "Complete profile to pickup work"**
