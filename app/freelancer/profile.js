@@ -359,6 +359,21 @@ export default function FreelancerProfileScreen() {
             <Text style={styles.readOnlyNote}>Auto-filled after approval</Text>
           </View>
 
+          {/* Skills - Editable */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Skills (comma separated)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={skills}
+              onChangeText={setSkills}
+              editable={isEditing}
+              placeholder="Delivery, Plumbing, Electrical, Cooking, Mechanic, Care Taking, Tailoring, etc."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
           {/* Experience - Editable */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Experience (Years)</Text>
@@ -370,21 +385,6 @@ export default function FreelancerProfileScreen() {
               placeholder="Enter your experience in years"
               placeholderTextColor="#999"
               keyboardType="numeric"
-            />
-          </View>
-
-          {/* Skills - Editable */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Skills (comma separated)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={skills}
-              onChangeText={setSkills}
-              editable={isEditing}
-              placeholder="e.g., Web Development, Mobile App, Design"
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={3}
             />
           </View>
 
