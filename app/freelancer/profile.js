@@ -24,6 +24,7 @@ export default function FreelancerProfileScreen() {
   const [profileImage, setProfileImage] = useState(null);
   const [gender, setGender] = useState('');
   const [pincode, setPincode] = useState('');
+  const [freelancerId, setFreelancerId] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [reEnterBankAccountNumber, setReEnterBankAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
@@ -77,6 +78,7 @@ export default function FreelancerProfileScreen() {
             setPhone(profile.phone || '');
             setAddress(profile.isVerified ? (profile.address || '') : '');
             setPincode(profile.isVerified ? (profile.pincode || '') : '');
+            setFreelancerId(profile.freelancerId || '');
             setExperience(profile.experience || '');
             setSkills(Array.isArray(profile.skills) ? profile.skills.join(', ') : '');
             setGender(profile.isVerified ? (profile.gender || '') : '');
@@ -286,6 +288,11 @@ export default function FreelancerProfileScreen() {
           {!isVerified && (
             <View style={styles.verificationBadge}>
               <Text style={styles.verificationText}>Pending Verification</Text>
+            </View>
+          )}
+          {isVerified && freelancerId && (
+            <View style={styles.freelancerIdBadge}>
+              <Text style={styles.freelancerIdText}>ID: {freelancerId}</Text>
             </View>
           )}
           {isVerified && (
@@ -566,6 +573,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  freelancerIdBadge: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  freelancerIdText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
   },
   verifiedBadge: {
     flexDirection: 'row',

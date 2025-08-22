@@ -23,6 +23,7 @@ export default function FreelancerHomeScreen() {
   const [activeTab, setActiveTab] = useState('available'); // 'available' or 'assigned'
   const [verificationStatus, setVerificationStatus] = useState('pending'); // 'pending', 'verified', 'rejected'
   const [isVerified, setIsVerified] = useState(false);
+  const [freelancerId, setFreelancerId] = useState('');
 
   const loadCurrentUserId = async () => {
     try {
@@ -134,6 +135,7 @@ export default function FreelancerHomeScreen() {
       // Set verification status
       setIsVerified(profile.isVerified === true);
       setVerificationStatus(profile.verificationStatus || 'pending');
+      setFreelancerId(profile.freelancerId || '');
       setHasBasicProfile(isProfileComplete);
       console.log('Profile completion status:', isComplete);
       console.log('Profile completion check:', {
@@ -276,9 +278,14 @@ export default function FreelancerHomeScreen() {
           marginTop: 16,
           alignItems: 'center',
         }}>
-          <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 15, textAlign: 'center', marginBottom: 8 }}>
+          <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 15, textAlign: 'center', marginBottom: 4 }}>
             Your profile has been verified
           </Text>
+          {freelancerId && (
+            <Text style={{ color: '#2196F3', fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>
+              Freelancer ID: {freelancerId}
+            </Text>
+          )}
           <TouchableOpacity
             style={{
               backgroundColor: '#4CAF50',
