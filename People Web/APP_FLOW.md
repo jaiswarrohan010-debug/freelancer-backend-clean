@@ -72,6 +72,57 @@ Unverified User → Submit Verification → Pending → Admin Review → Approve
 
 ---
 
+## 🎯 **POST-VERIFICATION FLOW (NEW):**
+
+### **After Admin Approval:**
+1. **User Status Updates** → `isVerified: true`, `verificationStatus: 'approved'`
+2. **Freelancer Dashboard Updates**:
+   - ✅ **"Your profile is under review"** → **"Your profile has been verified"**
+   - ✅ **New line appears**: **"Complete profile to pickup work"**
+3. **Profile Page Auto-fill**:
+   - ✅ **Full Name** (from verification data)
+   - ✅ **Gender** (from verification data)
+   - ✅ **Address** (from verification data)
+   - ✅ **Pincode** (from verification data)
+
+### **Profile Completion Flow:**
+1. **User clicks "Complete profile to pickup work"**
+2. **Redirects to Profile page** with pre-filled data
+3. **User can edit/confirm** the auto-filled information
+4. **User saves profile** to start picking up work
+5. **User can now access** job listings and apply for work
+
+---
+
+## 📋 **Updated Manual Verification Process:**
+
+### **Step 1: Personal Information**
+User fills in:
+- ✅ **Full Name** (First Name + Last Name)
+- ✅ **Date of Birth (DOB)**
+- ✅ **Gender**
+- ✅ **Address** (Complete address details)
+- ✅ **Pincode** (6-digit postal code)
+
+### **Step 2: Document Upload**
+User uploads:
+- ✅ **Profile Photo**
+- ✅ **Aadhar Card Front**
+- ✅ **Aadhar Card Back**
+- ✅ **PAN Card Front**
+- ✅ **Delivery Checkbox** (Optional)
+  - If checked: **Driving License Front**
+  - If checked: **Driving License Back**
+
+### **Step 3: Submit for Verification**
+- ✅ User clicks **"Submit for Verification"** button
+- ✅ Data sent to backend API
+- ✅ User profile shows **"Pending"** status
+- ✅ User sees **"Under Review"** message
+- ✅ User **cannot access** job listings or apply for work
+
+---
+
 ## 🎯 **Key Points to Remember:**
 
 ### **1. Integration Points:**
@@ -86,6 +137,9 @@ Unverified User → Submit Verification → Pending → Admin Review → Approve
 - ✅ User sees **"Under Review"** while pending
 - ✅ User gets **"Verified" badge** when approved
 - ✅ User gets **rejection reason** when rejected
+- ✅ **After approval**: User sees **"Your profile has been verified"**
+- ✅ **After approval**: User sees **"Complete profile to pickup work"**
+- ✅ **Profile auto-fills** with verification data (name, gender, address)
 
 ### **3. Admin Experience:**
 - ✅ Admin sees **all pending verifications**
@@ -115,7 +169,11 @@ Main App/
 │   ├── Personal Info Form
 │   ├── Document Upload
 │   └── Submit for Review
-└── Freelancer Dashboard (if verified)
+├── Freelancer Dashboard (if verified)
+│   ├── "Your profile has been verified" (after approval)
+│   ├── "Complete profile to pickup work" (after approval)
+│   └── Job listings (after profile completion)
+└── Profile Page (auto-filled with verification data)
 
 Admin Panel/
 ├── Login

@@ -288,6 +288,38 @@ export default function FreelancerHomeScreen() {
         </View>
       )}
 
+      {/* Verified but Profile Incomplete Alert */}
+      {profileChecked && isVerified && !profileComplete && (
+        <View style={{
+          backgroundColor: '#E8F5E8',
+          borderColor: '#4CAF50',
+          borderWidth: 1,
+          borderRadius: 8,
+          padding: 16,
+          marginHorizontal: 16,
+          marginTop: 16,
+          alignItems: 'center',
+        }}>
+          <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 15, textAlign: 'center', marginBottom: 8 }}>
+            Your profile has been verified
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#4CAF50',
+              paddingHorizontal: 20,
+              paddingVertical: 8,
+              borderRadius: 6,
+              marginTop: 8,
+            }}
+            onPress={() => router.push('/freelancer/profile')}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
+              Complete profile to pickup work
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Tab Selector */}
       <View style={{ flexDirection: 'row', marginTop: 16, marginBottom: 16, alignSelf: 'center', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
         <TouchableOpacity

@@ -29,8 +29,6 @@ export default function ManualVerificationScreen() {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
   
   // Date input state
@@ -276,7 +274,7 @@ export default function ManualVerificationScreen() {
   const submitVerification = async () => {
     try {
       // Validate required fields
-      if (!name || !dateOfBirth || !gender || !address || !city || !state || !pincode) {
+      if (!name || !dateOfBirth || !gender || !address || !pincode) {
         Alert.alert('Error', 'Please fill in all profile details');
         return;
       }
@@ -332,8 +330,6 @@ export default function ManualVerificationScreen() {
         dob: dateOfBirth,
         gender: gender,
         address: address,
-        city: city,
-        state: state,
         pincode: pincode,
         documents: {
           profilePhoto: profilePhoto,
@@ -503,27 +499,7 @@ export default function ManualVerificationScreen() {
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>City *</Text>
-          <TextInput
-            style={styles.input}
-            value={city}
-            onChangeText={setCity}
-            placeholder="Enter city name"
-            placeholderTextColor="#999"
-          />
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>State *</Text>
-          <TextInput
-            style={styles.input}
-            value={state}
-            onChangeText={setState}
-            placeholder="Enter state name"
-            placeholderTextColor="#999"
-          />
-        </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Pincode *</Text>

@@ -60,14 +60,14 @@ export default function FreelancerProfileScreen() {
             console.log('Freelancer Profile: Profile data received:', profile);
             
             // Pre-fill form fields
-            // Only show name and email if user is verified, otherwise show empty
+            // Auto-fill verification data if user is verified
             setFullName(profile.isVerified ? (profile.name || '') : '');
             setEmail(profile.isVerified ? (profile.email || '') : '');
             setPhone(profile.phone || '');
-            setAddress(profile.address || '');
+            setAddress(profile.isVerified ? (profile.address || '') : '');
             setExperience(profile.experience || '');
             setSkills(Array.isArray(profile.skills) ? profile.skills.join(', ') : '');
-            setGender(profile.gender || '');
+            setGender(profile.isVerified ? (profile.gender || '') : '');
             
             // Load bank details
             console.log('Profile bank details:', profile.bankDetails);
