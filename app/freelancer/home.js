@@ -244,37 +244,7 @@ export default function FreelancerHomeScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Profile incomplete message - only show when verified but profile incomplete */}
-      {profileChecked && isVerified && !profileComplete && (
-        <View style={{
-          backgroundColor: '#fff0f0',
-          borderRadius: 8,
-          padding: 12,
-          marginHorizontal: 20,
-          marginTop: 16,
-          marginBottom: 0,
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: '#FF3B30',
-        }}>
-          <Text style={{ color: '#FF3B30', fontWeight: 'bold', fontSize: 15, textAlign: 'center', marginBottom: 8 }}>
-            Complete your profile to pickup work.
-          </Text>
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#007AFF',
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 6,
-            }}
-            onPress={() => router.push(`/auth/manual-verification?userId=${currentUserId}`)}
-          >
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-              Complete Profile
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+
 
       {/* Verification Status Alert */}
       {profileChecked && !isVerified && (
