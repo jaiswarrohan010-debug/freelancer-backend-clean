@@ -23,6 +23,7 @@ export default function FreelancerProfileScreen() {
   const [saveError, setSaveError] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [gender, setGender] = useState('');
+  const [pincode, setPincode] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [reEnterBankAccountNumber, setReEnterBankAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
@@ -60,11 +61,12 @@ export default function FreelancerProfileScreen() {
             console.log('Freelancer Profile: Profile data received:', profile);
             
             // Pre-fill form fields
-            // Auto-fill verification data if user is verified
+            // Auto-fill verification data if user is verified (except email)
             setFullName(profile.isVerified ? (profile.name || '') : '');
-            setEmail(profile.isVerified ? (profile.email || '') : '');
+            setEmail(''); // Don't auto-fill email, let freelancer fill it
             setPhone(profile.phone || '');
             setAddress(profile.isVerified ? (profile.address || '') : '');
+            setPincode(profile.isVerified ? (profile.pincode || '') : '');
             setExperience(profile.experience || '');
             setSkills(Array.isArray(profile.skills) ? profile.skills.join(', ') : '');
             setGender(profile.isVerified ? (profile.gender || '') : '');
@@ -195,6 +197,7 @@ export default function FreelancerProfileScreen() {
       setFullName(updatedProfile.name || fullName);
       setEmail(updatedProfile.email || '');
       setAddress(updatedProfile.address || address);
+      setPincode(updatedProfile.pincode || pincode);
       setGender(updatedProfile.gender || gender);
       
       if (updatedProfile.bankDetails) {
@@ -338,6 +341,20 @@ export default function FreelancerProfileScreen() {
               placeholderTextColor="#999"
               multiline
               numberOfLines={3}
+            />
+            <Text style={styles.readOnlyNote}>Auto-filled after approval</Text>
+          </View>
+
+          {/* Pincode - Read Only */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Pincode</Text>
+            <TextInput
+              style={[styles.input, styles.readOnlyInput]}
+              value={pincode}
+              editable={false}
+              placeholder="Will be filled after verification"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
             />
             <Text style={styles.readOnlyNote}>Auto-filled after approval</Text>
           </View>

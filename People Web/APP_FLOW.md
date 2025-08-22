@@ -84,6 +84,7 @@ Unverified User → Submit Verification → Pending → Admin Review → Approve
    - ✅ **Gender** (from verification data)
    - ✅ **Address** (from verification data)
    - ✅ **Pincode** (from verification data)
+   - ✅ **Email** (freelancer fills manually)
 
 ### **Profile Completion Flow:**
 1. **User clicks "Complete profile to pickup work"**
