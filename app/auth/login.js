@@ -46,6 +46,8 @@ export default function LoginScreen() {
     }
     setVerifying(true);
     setSignInTimer(20);
+    let hasError = false; // Flag to track if there was an error
+    
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setSignInTimer((prev) => {
@@ -82,13 +84,19 @@ export default function LoginScreen() {
               body: JSON.stringify({
                 idToken: idToken,
                 role: selectedRole,
+                action: 'login', // Specify this is a login attempt
               }),
             });
             const responseText = await response.text();
+            console.log('Backend response status:', response.status);
+            console.log('Backend response text:', responseText);
+            
             if (!response.ok) {
               if (response.status === 404) {
+                console.log('❌ 404 Error: No user found, throwing error');
                 throw new Error('No user found with this phone number. Please create an account first.');
               }
+              console.log('❌ Backend error:', response.status, responseText);
               throw new Error(`Backend error: ${response.status} - ${responseText}`);
             }
             const authData = JSON.parse(responseText);
@@ -98,7 +106,9 @@ export default function LoginScreen() {
               role: authData.user.role,
               id: authData.user.id,
               isNewUser: authData.isNewUser,
-              needsVerification: authData.needsVerification
+              needsVerification: authData.needsVerification,
+              verificationStatus: authData.verificationStatus,
+              isRejected: authData.isRejected
             }));
             await AsyncStorage.setItem('@jwt_token', authData.token);
             
@@ -106,17 +116,29 @@ export default function LoginScreen() {
             console.log('Login navigation logic:', {
               role: authData.user.role,
               needsVerification: authData.needsVerification,
+              verificationStatus: authData.verificationStatus,
+              isRejected: authData.isRejected,
               userId: authData.user.id
             });
             
             // Add a small delay to ensure authentication state is properly set
             setTimeout(() => {
+              // Check if there was an error before navigating
+              if (hasError) {
+                console.log('❌ Skipping navigation due to error');
+                return;
+              }
+              
               if (authData.user.role === 'client') {
                 console.log('Login: Navigating to client home');
                 router.replace('/client/home');
               } else {
                 // For freelancers
-                if (authData.needsVerification) {
+                if (authData.isRejected) {
+                  // Rejected user - go to dashboard to show rejection modal
+                  console.log('Login: Navigating to freelancer home (rejected user)');
+                  router.replace('/freelancer/home');
+                } else if (authData.needsVerification) {
                   // Needs verification - go to manual verification
                   console.log('Login: Navigating to manual verification');
                   router.push(`/auth/manual-verification?userId=${authData.user.id}`);
@@ -128,11 +150,13 @@ export default function LoginScreen() {
               }
             }, 1000);
           } catch (error) {
-            console.error('Authentication error details:', error);
+            console.error('❌ Authentication error caught:', error.message);
             console.error('Error name:', error.name);
-            console.error('Error message:', error.message);
             console.error('Error stack:', error.stack);
+            hasError = true; // Set error flag
             Alert.alert('Backend Error', `Failed to authenticate with server: ${error.message}`);
+            // Ensure we don't proceed with navigation
+            return;
           } finally {
             unsubscribe();
             setVerifying(false);
@@ -140,6 +164,10 @@ export default function LoginScreen() {
         }
       });
     } catch (error) {
+      console.error('❌ Outer catch block - OTP verification error:', error.message);
+      console.error('Error name:', error.name);
+      console.error('Error stack:', error.stack);
+      hasError = true; // Set error flag
       Alert.alert('Authentication Error', `OTP verification failed: ${error.message}`);
       clearInterval(timerRef.current);
       setVerifying(false);

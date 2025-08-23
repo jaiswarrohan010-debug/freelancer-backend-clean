@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
-export default function DrawerMenu({ visible, onClose, userRole }) {
+export default function DrawerMenu({ visible, onClose, userRole, userData }) {
   const router = useRouter();
   const { colors } = useTheme();
 
@@ -52,6 +52,35 @@ export default function DrawerMenu({ visible, onClose, userRole }) {
             </TouchableOpacity>
           </View>
 
+          {/* User Profile Section */}
+          {userRole === 'freelancer' && userData && (
+            <View style={styles.profileSection}>
+              <View style={styles.profileImageContainer}>
+                {userData.profileImage ? (
+                  <Image 
+                    source={{ uri: userData.profileImage }} 
+                    style={styles.profileImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.profileImagePlaceholder, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="person" size={40} color="white" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={[styles.userName, { color: colors.text }]}>
+                  {userData.name || 'User'}
+                </Text>
+                {userData.freelancerId && (
+                  <Text style={[styles.freelancerId, { color: colors.primary }]}>
+                    ID: {userData.freelancerId}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
           <View style={styles.menuItems}>
             {menuItems.map((item, index) => (
               <TouchableOpacity
@@ -98,6 +127,46 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  profileImageContainer: {
+    marginRight: 15,
+  },
+  profileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  profileImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  freelancerId: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   menuItems: {
     flex: 1,

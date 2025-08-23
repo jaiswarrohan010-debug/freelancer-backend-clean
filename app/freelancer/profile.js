@@ -13,12 +13,10 @@ export default function FreelancerProfileScreen() {
   const [saving, setSaving] = useState(false);
   // Form fields
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [experience, setExperience] = useState('');
   const [skills, setSkills] = useState('');
-  const [emailError, setEmailError] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
@@ -72,9 +70,8 @@ export default function FreelancerProfileScreen() {
             console.log('Freelancer Profile: Profile data received:', profile);
             
             // Pre-fill form fields
-            // Auto-fill verification data if user is verified (except email)
+            // Auto-fill verification data if user is verified
             setFullName(profile.isVerified ? (profile.name || '') : '');
-            setEmail(''); // Don't auto-fill email, let freelancer fill it
             setPhone(profile.phone || '');
             setAddress(profile.isVerified ? (profile.address || '') : '');
             setPincode(profile.isVerified ? (profile.pincode || '') : '');
@@ -133,14 +130,7 @@ export default function FreelancerProfileScreen() {
       setSaving(true);
       setSaveError(false);
       
-      // Validate email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (email && !emailRegex.test(email)) {
-        setEmailError('Please enter a valid email address');
-        setSaving(false);
-        return;
-      }
-      setEmailError('');
+
 
       // Validate bank account details if provided
       if (bankAccountNumber || reEnterBankAccountNumber || ifscCode) {
@@ -176,9 +166,8 @@ export default function FreelancerProfileScreen() {
       }
       const firebaseIdToken = await firebaseUser.getIdToken();
 
-      // Only save editable fields (email, experience, skills, bank details)
+      // Only save editable fields (experience, skills, bank details)
       const updateData = {
-        email: email,
         experience: experience,
         skills: skills.split(',').map(skill => skill.trim()).filter(skill => skill),
         bankDetails: {
@@ -208,7 +197,6 @@ export default function FreelancerProfileScreen() {
       
       // Update local state with server response
       setFullName(updatedProfile.name || fullName);
-      setEmail(updatedProfile.email || '');
       setAddress(updatedProfile.address || address);
       setPincode(updatedProfile.pincode || pincode);
       setGender(updatedProfile.gender || gender);
@@ -330,21 +318,7 @@ export default function FreelancerProfileScreen() {
             <Text style={styles.readOnlyNote}>Auto-filled after approval</Text>
           </View>
 
-          {/* Email - Editable */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={[styles.input, emailError ? styles.inputError : null]}
-              value={email}
-              onChangeText={setEmail}
-              editable={isEditing}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-          </View>
+
 
 
 

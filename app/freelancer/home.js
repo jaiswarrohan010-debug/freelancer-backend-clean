@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DrawerMenu from '../components/DrawerMenu';
 import JobCard from '../components/JobCard';
 import { useTheme } from '../context/ThemeContext';
@@ -24,6 +24,9 @@ export default function FreelancerHomeScreen() {
   const [verificationStatus, setVerificationStatus] = useState('pending'); // 'pending', 'verified', 'rejected'
   const [isVerified, setIsVerified] = useState(false);
   const [freelancerId, setFreelancerId] = useState('');
+  const [userData, setUserData] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
 
   const loadCurrentUserId = async () => {
     try {
@@ -124,7 +127,6 @@ export default function FreelancerHomeScreen() {
         profile.address && typeof profile.address === 'string' && profile.address.trim() &&
         profile.gender && typeof profile.gender === 'string' && profile.gender.trim() &&
         profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim() &&
-        profile.email && typeof profile.email === 'string' && profile.email.trim() &&
         profile.experience && typeof profile.experience === 'string' && profile.experience.trim() &&
         profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0
       );
@@ -137,13 +139,28 @@ export default function FreelancerHomeScreen() {
       setVerificationStatus(profile.verificationStatus || 'pending');
       setFreelancerId(profile.freelancerId || '');
       setHasBasicProfile(isProfileComplete);
+      
+      // Handle rejection status
+      if (profile.verificationStatus === 'rejected') {
+        setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+        setShowRejectionModal(true);
+      } else {
+        setShowRejectionModal(false);
+        setRejectionReason('');
+      }
+      
+      // Set user data for drawer
+      setUserData({
+        name: profile.name,
+        profileImage: profile.profileImage,
+        freelancerId: profile.freelancerId
+      });
       console.log('Profile completion status:', isComplete);
       console.log('Profile completion check:', {
         name: Boolean(profile.name && typeof profile.name === 'string' && profile.name.trim()),
         address: Boolean(profile.address && typeof profile.address === 'string' && profile.address.trim()),
         gender: Boolean(profile.gender && typeof profile.gender === 'string' && profile.gender.trim()),
         profileImage: Boolean(profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim()),
-        email: Boolean(profile.email && typeof profile.email === 'string' && profile.email.trim()),
         experience: Boolean(profile.experience && typeof profile.experience === 'string' && profile.experience.trim()),
         skills: Boolean(profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0),
         isProfileComplete,
@@ -247,7 +264,71 @@ export default function FreelancerHomeScreen() {
         <View style={styles.placeholder} />
       </View>
 
-
+      {/* Rejection Modal */}
+      <Modal
+        visible={showRejectionModal}
+        transparent={false}
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent closing with back button
+      >
+        <View style={styles.rejectionModalContainer}>
+          <View style={styles.rejectionModalContent}>
+            <View style={styles.rejectionIconContainer}>
+              <Ionicons name="close-circle" size={80} color="#f44336" />
+            </View>
+            
+            <Text style={styles.rejectionTitle}>
+              Verification Rejected
+            </Text>
+            
+            <Text style={styles.rejectionMessage}>
+              Your profile verification has been rejected due to:
+            </Text>
+            
+            <Text style={styles.rejectionReason}>
+              {rejectionReason}
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.createAccountButton}
+              onPress={async () => {
+                try {
+                  const firebaseUser = auth().currentUser;
+                  if (!firebaseUser) {
+                    Alert.alert('Error', 'No user is currently signed in');
+                    return;
+                  }
+                  
+                  const firebaseIdToken = await firebaseUser.getIdToken();
+                  const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/resubmit-verification`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${firebaseIdToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  
+                  const data = await response.json();
+                  
+                  if (response.ok) {
+                    // Navigate to manual verification page with resubmission flag
+                    router.push('/auth/manual-verification?resubmit=true');
+                  } else {
+                    Alert.alert('Error', data.message || 'Failed to resubmit verification');
+                  }
+                } catch (error) {
+                  console.error('Error resubmitting verification:', error);
+                  Alert.alert('Error', 'Failed to resubmit verification. Please try again.');
+                }
+              }}
+            >
+              <Text style={styles.createAccountButtonText}>
+                Re-Submit for verification
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Verification Status Alert */}
       {profileChecked && !isVerified && (
@@ -279,14 +360,9 @@ export default function FreelancerHomeScreen() {
           marginTop: 16,
           alignItems: 'center',
         }}>
-          <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 15, textAlign: 'center', marginBottom: 4 }}>
+          <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 15, textAlign: 'center', marginBottom: 8 }}>
             Your profile has been verified
           </Text>
-          {freelancerId && (
-            <Text style={{ color: '#2196F3', fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>
-              Freelancer ID: {freelancerId}
-            </Text>
-          )}
           <TouchableOpacity
             style={{
               backgroundColor: '#4CAF50',
@@ -419,6 +495,7 @@ export default function FreelancerHomeScreen() {
         visible={isDrawerVisible}
         onClose={() => setIsDrawerVisible(false)}
         userRole="freelancer"
+        userData={userData}
       />
     </View>
   );
@@ -460,5 +537,60 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginTop: 20,
+  },
+  // Rejection Modal Styles
+  rejectionModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectionModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    margin: 20,
+    alignItems: 'center',
+    maxWidth: 350,
+    width: '90%',
+  },
+  rejectionIconContainer: {
+    marginBottom: 20,
+  },
+  rejectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#f44336',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  rejectionMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 22,
+  },
+  rejectionReason: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 20,
+    fontStyle: 'italic',
+    paddingHorizontal: 10,
+  },
+  createAccountButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 10,
+    minWidth: 200,
+  },
+  createAccountButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 }); 

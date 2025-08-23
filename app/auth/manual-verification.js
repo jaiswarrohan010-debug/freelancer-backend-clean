@@ -59,12 +59,85 @@ export default function ManualVerificationScreen() {
     drivingLicenseFront: false,
     drivingLicenseBack: false
   });
+  
+  // Resubmission state
+  const [isResubmitting, setIsResubmitting] = useState(false);
 
   useEffect(() => {
     // User is already authenticated from the previous screen
     // No need to check Firebase auth state here
     console.log('Manual verification page loaded for userId:', userId);
+    
+    // Check if user is resubmitting by checking URL params and verification status
+    checkUserVerificationStatus();
+    
+    // Check if user should be redirected back to rejection modal
+    checkRejectionStatus();
   }, [userId]);
+  
+  const checkUserVerificationStatus = async () => {
+    try {
+      // Check if we came from resubmission (URL parameter)
+      const isResubmit = router.searchParams?.resubmit;
+      
+      if (isResubmit === 'true') {
+        setIsResubmitting(true);
+        console.log('User is resubmitting verification (from URL parameter)');
+        return;
+      }
+      
+      const userData = await AsyncStorage.getItem('@user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        const userId = user.id || user._id;
+        
+        // Fetch current user status from backend
+        const response = await fetch(`${API_BASE_URL}/users/${userId}`);
+        if (response.ok) {
+          const profile = await response.json();
+          
+          // Check if user has resubmitted (any resubmissionCount > 0 indicates previous rejection)
+          if (profile.resubmissionCount && profile.resubmissionCount > 0) {
+            setIsResubmitting(true);
+            console.log('User is resubmitting verification, resubmission count:', profile.resubmissionCount);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user verification status:', error);
+    }
+  };
+
+  const checkRejectionStatus = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        const userId = user.id || user._id;
+        
+        // Check if user data indicates rejection
+        if (user.isRejected || user.verificationStatus === 'rejected') {
+          console.log('User is rejected (from stored data), redirecting to dashboard');
+          router.replace('/freelancer/home');
+          return;
+        }
+        
+        // Fetch current user status from backend
+        const response = await fetch(`${API_BASE_URL}/users/${userId}`);
+        if (response.ok) {
+          const profile = await response.json();
+          
+          // If user is still rejected, redirect back to dashboard (which will show rejection modal)
+          if (profile.verificationStatus === 'rejected') {
+            console.log('User is still rejected (from backend), redirecting to dashboard');
+            router.replace('/freelancer/home');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking rejection status:', error);
+    }
+  };
 
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -577,7 +650,9 @@ export default function ManualVerificationScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Submit for Verification</Text>
+            <Text style={styles.submitButtonText}>
+              {isResubmitting ? 'Re-Submit for Verification' : 'Submit for Verification'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
