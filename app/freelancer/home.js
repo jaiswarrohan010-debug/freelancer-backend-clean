@@ -141,42 +141,82 @@ export default function FreelancerHomeScreen() {
       setHasBasicProfile(isProfileComplete);
       
       // Handle rejection status
+      console.log('🔍 Checking rejection status for user:', user.id || user._id);
+      console.log('🔍 User verification status:', profile.verificationStatus);
+      console.log('🔍 User is rejected:', profile.verificationStatus === 'rejected');
+      
       if (profile.verificationStatus === 'rejected') {
+        console.log('❌ User is rejected, showing rejection modal');
         setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
         setShowRejectionModal(true);
       } else if (profile.verificationStatus === 'pending') {
-        // Check if user has any pending verification entries
-        try {
-          const verificationResponse = await fetch(`${API_BASE_URL}/verifications/initial`, {
-            headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
-          });
+        console.log('⏳ User status is pending, checking for verification entries...');
+        
+        // For new users who just completed verification, don't show rejection modal
+        // Only show rejection modal if user was previously rejected and hasn't resubmitted
+        if (profile.resubmissionCount && profile.resubmissionCount > 0) {
+          console.log('🔄 User has resubmission history, checking for pending verification entries...');
           
-          if (verificationResponse.ok) {
-            const initialVerifications = await verificationResponse.json();
-            const userInitialVerification = initialVerifications.verifications?.find(v => v.userId === (user.id || user._id));
-            
-            const resubmissionResponse = await fetch(`${API_BASE_URL}/verifications/resubmissions`, {
+          try {
+            const verificationResponse = await fetch(`${API_BASE_URL}/verifications/initial`, {
               headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
             });
             
-            let userResubmissionVerification = null;
-            if (resubmissionResponse.ok) {
-              const resubmissionVerifications = await resubmissionResponse.json();
-              userResubmissionVerification = resubmissionVerifications.verifications?.find(v => v.userId === (user.id || user._id));
-            }
+            console.log('📡 Initial verification response status:', verificationResponse.status);
             
-            // If user has any pending verification (initial or resubmission), don't show rejection modal
-            if (userInitialVerification || userResubmissionVerification) {
-              console.log('User has pending verification, showing "Under Review"');
-              setShowRejectionModal(false);
-              setRejectionReason('');
+            if (verificationResponse.ok) {
+              const initialVerifications = await verificationResponse.json();
+              console.log('📋 Initial verifications found:', initialVerifications.verifications?.length || 0);
+              
+              const userInitialVerification = initialVerifications.verifications?.find(v => v.userId === (user.id || user._id));
+              console.log('👤 User initial verification found:', !!userInitialVerification);
+              
+              const resubmissionResponse = await fetch(`${API_BASE_URL}/verifications/resubmissions`, {
+                headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+              });
+              
+              console.log('📡 Resubmission verification response status:', resubmissionResponse.status);
+              
+              let userResubmissionVerification = null;
+              if (resubmissionResponse.ok) {
+                const resubmissionVerifications = await resubmissionResponse.json();
+                console.log('📋 Resubmission verifications found:', resubmissionVerifications.verifications?.length || 0);
+                
+                userResubmissionVerification = resubmissionVerifications.verifications?.find(v => v.userId === (user.id || user._id));
+                console.log('👤 User resubmission verification found:', !!userResubmissionVerification);
+              }
+              
+              // If user has any pending verification (initial or resubmission), don't show rejection modal
+              if (userInitialVerification || userResubmissionVerification) {
+                console.log('✅ User has pending verification, showing "Under Review"');
+                setShowRejectionModal(false);
+                setRejectionReason('');
+              } else {
+                console.log('❌ User has no pending verification, showing rejection modal');
+                setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+                setShowRejectionModal(true);
+              }
             } else {
-              // User clicked "Re-Submit" but hasn't completed verification yet
-              setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
-              setShowRejectionModal(true);
+              console.log('⚠️ Verification endpoints failed, using fallback logic');
+              // Fallback to old logic if verification endpoints fail
+              const hasVerificationDocuments = profile.documents && 
+                profile.documents.aadhaar && 
+                profile.documents.aadhaar.front && 
+                profile.documents.aadhaar.back &&
+                profile.documents.pan && 
+                profile.documents.pan.front;
+              
+              if (!hasVerificationDocuments) {
+                setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+                setShowRejectionModal(true);
+              } else {
+                setShowRejectionModal(false);
+                setRejectionReason('');
+              }
             }
-          } else {
-            // Fallback to old logic if verification endpoints fail
+          } catch (error) {
+            console.error('❌ Error checking verification status:', error);
+            // Fallback to old logic
             const hasVerificationDocuments = profile.documents && 
               profile.documents.aadhaar && 
               profile.documents.aadhaar.front && 
@@ -192,25 +232,14 @@ export default function FreelancerHomeScreen() {
               setRejectionReason('');
             }
           }
-        } catch (error) {
-          console.error('Error checking verification status:', error);
-          // Fallback to old logic
-          const hasVerificationDocuments = profile.documents && 
-            profile.documents.aadhaar && 
-            profile.documents.aadhaar.front && 
-            profile.documents.aadhaar.back &&
-            profile.documents.pan && 
-            profile.documents.pan.front;
-          
-          if (!hasVerificationDocuments) {
-            setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
-            setShowRejectionModal(true);
-          } else {
-            setShowRejectionModal(false);
-            setRejectionReason('');
-          }
+        } else {
+          console.log('✅ New user with pending status, showing "Under Review"');
+          // New user who just completed verification - show "Under Review"
+          setShowRejectionModal(false);
+          setRejectionReason('');
         }
       } else {
+        console.log('✅ User status is not pending/rejected, no rejection modal');
         setShowRejectionModal(false);
         setRejectionReason('');
       }
