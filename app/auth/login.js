@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { API_BASE_URL } from '../utils/api';
 
@@ -17,7 +17,21 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [signInTimer, setSignInTimer] = useState(20);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const timerRef = useRef(null);
+
+  // Add logout function to clear current authentication
+  const handleLogout = async () => {
+    try {
+      await auth().signOut();
+      await AsyncStorage.removeItem('@user_data');
+      await AsyncStorage.removeItem('@jwt_token');
+      Alert.alert('Success', 'Logged out successfully. You can now test with a new phone number.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout: ' + error.message);
+    }
+  };
 
   const handleSendOtp = async () => {
     if (phoneNumber.length < 10) {
@@ -92,12 +106,24 @@ export default function LoginScreen() {
             console.log('Backend response text:', responseText);
             
             if (!response.ok) {
+              const errorData = JSON.parse(responseText);
+              
               if (response.status === 404) {
-                console.log('❌ 404 Error: No user found, throwing error');
-                throw new Error('No user found with this phone number. Please create an account first.');
+                console.log('❌ 404 Error: No user found');
+                setErrorMessage(errorData.message || 'Create account first to login');
+                setShowErrorModal(true);
+                return;
+              } else if (response.status === 403) {
+                console.log('❌ 403 Error: User cannot login');
+                setErrorMessage(errorData.message || 'Create account first to login');
+                setShowErrorModal(true);
+                return;
+              } else {
+                console.log('❌ Backend error:', response.status, responseText);
+                setErrorMessage(`Backend error: ${response.status} - ${responseText}`);
+                setShowErrorModal(true);
+                return;
               }
-              console.log('❌ Backend error:', response.status, responseText);
-              throw new Error(`Backend error: ${response.status} - ${responseText}`);
             }
             const authData = JSON.parse(responseText);
             await AsyncStorage.setItem('@user_data', JSON.stringify({
@@ -138,14 +164,18 @@ export default function LoginScreen() {
                   // Rejected user - go to dashboard to show rejection modal
                   console.log('Login: Navigating to freelancer home (rejected user)');
                   router.replace('/freelancer/home');
-                } else if (authData.needsVerification) {
-                  // Needs verification - go to manual verification
+                } else if (authData.verificationStatus === 'pending') {
+                  // User has submitted verification and is under review - go to dashboard
+                  console.log('Login: Navigating to freelancer home (pending verification)');
+                  router.replace('/freelancer/home');
+                } else if (authData.verificationStatus === 'approved') {
+                  // Verified freelancer - go to dashboard
+                  console.log('Login: Navigating to freelancer home (verified)');
+                  router.replace('/freelancer/home');
+                } else {
+                  // User needs to complete verification - go to manual verification
                   console.log('Login: Navigating to manual verification');
                   router.push(`/auth/manual-verification?userId=${authData.user.id}`);
-                } else {
-                  // Verified freelancer - go to dashboard
-                  console.log('Login: Navigating to freelancer home');
-                  router.replace('/freelancer/home');
                 }
               }
             }, 1000);
@@ -195,6 +225,15 @@ export default function LoginScreen() {
             {selectedRole === 'client' ? 'Hire Talent' : 'Work as Freelancer'}
           </Text>
           <Text style={styles.appSubtitle}>Sign in to your account</Text>
+          
+          {/* Logout Button for Testing */}
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Loading State */}
@@ -306,6 +345,41 @@ export default function LoginScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Error Modal */}
+      <Modal
+        visible={showErrorModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowErrorModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.errorModal}>
+            <View style={styles.errorIconContainer}>
+              <Ionicons name="alert-circle" size={48} color="#FF3B30" />
+            </View>
+            <Text style={styles.errorTitle}>Login Failed</Text>
+            <Text style={styles.errorMessage}>{errorMessage}</Text>
+            <View style={styles.errorButtons}>
+              <TouchableOpacity 
+                style={styles.errorButton}
+                onPress={() => setShowErrorModal(false)}
+              >
+                <Text style={styles.errorButtonText}>OK</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.errorButton, styles.createAccountButton]}
+                onPress={() => {
+                  setShowErrorModal(false);
+                  router.push(`/auth/phone?role=${selectedRole}`);
+                }}
+              >
+                <Text style={styles.createAccountButtonText}>Create Account</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -475,6 +549,87 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: '#007AFF',
+    fontWeight: '600',
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFE5E5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+  },
+  logoutButtonText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  errorIconContainer: {
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  errorButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  errorButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  errorButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  createAccountButton: {
+    backgroundColor: '#007AFF',
+  },
+  createAccountButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

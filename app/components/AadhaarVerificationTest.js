@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import CashfreeVerification from '../utils/cashfree-verification';
+// CashfreeVerification temporarily disabled
 
 export default function AadhaarVerificationTest() {
   const [aadhaarNumber, setAadhaarNumber] = useState('539388807808');
@@ -20,15 +20,8 @@ export default function AadhaarVerificationTest() {
   const generateOTP = async () => {
     setLoading(true);
     try {
-      const result = await CashfreeVerification.generateAadhaarOTP(aadhaarNumber);
-      console.log('Generate OTP Result:', result);
-      
-      if (result.success) {
-        setOtpSent(true);
-        Alert.alert('Success', 'OTP sent successfully');
-      } else {
-        Alert.alert('Error', result.message);
-      }
+      // CashfreeVerification temporarily disabled
+      Alert.alert('Feature Disabled', 'Aadhaar verification via Cashfree is temporarily disabled.');
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {
@@ -39,14 +32,8 @@ export default function AadhaarVerificationTest() {
   const verifyOTP = async () => {
     setVerifying(true);
     try {
-      const result = await CashfreeVerification.verifyAadhaarOTP(aadhaarNumber, otp);
-      console.log('Verify OTP Result:', result);
-      
-      if (result.success) {
-        Alert.alert('Success', 'Aadhaar verified successfully!');
-      } else {
-        Alert.alert('Error', result.message);
-      }
+      // CashfreeVerification temporarily disabled
+      Alert.alert('Feature Disabled', 'Aadhaar verification via Cashfree is temporarily disabled.');
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {

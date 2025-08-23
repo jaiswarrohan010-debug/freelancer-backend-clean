@@ -15,7 +15,6 @@ import {
     View
 } from 'react-native';
 import { API_BASE_URL } from '../utils/api';
-import CashfreeVerification from '../utils/cashfree-verification';
 
 export default function AadhaarVerificationScreen() {
   const router = useRouter();
@@ -36,30 +35,12 @@ export default function AadhaarVerificationScreen() {
 
     setLoading(true);
     try {
-      const result = await CashfreeVerification.generateAadhaarOTP(aadhaarNumber);
-      
-      if (result.success) {
-        setOtpSent(true);
-        Alert.alert('OTP Sent', 'OTP has been sent to your Aadhaar-linked mobile number');
-      } else {
-        // Handle sandbox-specific errors
-        if (result.error?.code === 'verification_failed') {
-          Alert.alert(
-            'Test Mode', 
-            'This is a test environment. The Aadhaar number may not exist in our test database. Please use the provided test number.',
-            [{ text: 'OK' }]
-          );
-        } else if (result.error?.code === 'verification_pending') {
-          setOtpSent(true);
-          Alert.alert(
-            'Test Mode', 
-            'In sandbox mode, OTP generation is simulated. You can proceed with any 6-digit OTP for testing.',
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert('Error', result.message || 'Failed to send OTP');
-        }
-      }
+      // CashfreeVerification temporarily disabled
+      Alert.alert(
+        'Feature Disabled', 
+        'Aadhaar verification via Cashfree is temporarily disabled. Please use manual verification instead.',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to send OTP. Please try again.');
     } finally {
@@ -76,25 +57,12 @@ export default function AadhaarVerificationScreen() {
 
     setVerifying(true);
     try {
-      const result = await CashfreeVerification.verifyAadhaarOTP(aadhaarNumber, otp);
-      
-      if (result.success) {
-        // Update user profile with Aadhaar verification data
-        await updateUserProfile(result.data);
-        
-        Alert.alert(
-          'Verification Successful',
-          'Your Aadhaar has been verified successfully!',
-          [
-            {
-              text: 'Continue',
-              onPress: () => router.replace('/freelancer/home')
-            }
-          ]
-        );
-      } else {
-        Alert.alert('Verification Failed', result.message || 'Invalid OTP. Please try again.');
-      }
+      // CashfreeVerification temporarily disabled
+      Alert.alert(
+        'Feature Disabled', 
+        'Aadhaar verification via Cashfree is temporarily disabled. Please use manual verification instead.',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
       Alert.alert('Error', 'Verification failed. Please try again.');
     } finally {

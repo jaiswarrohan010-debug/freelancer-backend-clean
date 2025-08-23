@@ -86,6 +86,7 @@ export default function PhoneAuthScreen() {
                 idToken: idToken,
                 role: role || 'client',
                 phone: user.phoneNumber, // Send phone number for new user creation
+                action: 'signup', // Specify this is account creation
               }),
             });
             const responseText = await response.text();

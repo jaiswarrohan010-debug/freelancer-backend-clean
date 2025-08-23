@@ -19,7 +19,7 @@ import { API_BASE_URL } from '../utils/api';
 
 export default function ManualVerificationScreen() {
   const router = useRouter();
-  const { userId } = useLocalSearchParams();
+  const { userId, phone, role } = useLocalSearchParams();
   
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -66,14 +66,14 @@ export default function ManualVerificationScreen() {
   useEffect(() => {
     // User is already authenticated from the previous screen
     // No need to check Firebase auth state here
-    console.log('Manual verification page loaded for userId:', userId);
+    console.log('Manual verification page loaded for userId:', userId, 'phone:', phone, 'role:', role);
     
     // Check if user is resubmitting by checking URL params and verification status
     checkUserVerificationStatus();
     
     // Check if user should be redirected back to rejection modal
     checkRejectionStatus();
-  }, [userId]);
+  }, [userId, phone, role]);
   
   const checkUserVerificationStatus = async () => {
     try {
@@ -110,6 +110,15 @@ export default function ManualVerificationScreen() {
 
   const checkRejectionStatus = async () => {
     try {
+      // Check if we came from resubmission (URL parameter)
+      const isResubmit = router.searchParams?.resubmit;
+      
+      // If user is resubmitting, don't redirect them back to dashboard
+      if (isResubmit === 'true') {
+        console.log('User is resubmitting, allowing access to manual verification');
+        return;
+      }
+      
       const userData = await AsyncStorage.getItem('@user_data');
       if (userData) {
         const user = JSON.parse(userData);
@@ -376,17 +385,28 @@ export default function ManualVerificationScreen() {
 
       setLoading(true);
 
-      // Get user phone number from stored user data
+      // Get user phone number from stored user data or URL params
       let userPhone = null;
-      try {
-        const userDataString = await AsyncStorage.getItem('@user_data');
-        if (userDataString) {
-          const userData = JSON.parse(userDataString);
-          userPhone = userData.phoneNumber;
-          console.log('User phone from stored data:', userPhone);
+      let userRole = null;
+      
+      if (phone) {
+        // User came from login (no userId)
+        userPhone = phone;
+        userRole = role;
+        console.log('User phone from URL params:', userPhone, 'role:', userRole);
+      } else {
+        // User came from existing flow (has userId)
+        try {
+          const userDataString = await AsyncStorage.getItem('@user_data');
+          if (userDataString) {
+            const userData = JSON.parse(userDataString);
+            userPhone = userData.phoneNumber;
+            userRole = userData.role;
+            console.log('User phone from stored data:', userPhone, 'role:', userRole);
+          }
+        } catch (error) {
+          console.log('Error getting stored user data:', error);
         }
-      } catch (error) {
-        console.log('Error getting stored user data:', error);
       }
 
       if (!userPhone) {
@@ -400,6 +420,7 @@ export default function ManualVerificationScreen() {
         lastName: name.split(' ').slice(1).join(' ') || '',
         email: `${userPhone}@user.com`, // Default email since we don't have Firebase user
         phone: userPhone,
+        role: userRole || 'freelancer',
         dob: dateOfBirth,
         gender: gender,
         address: address,
@@ -414,7 +435,8 @@ export default function ManualVerificationScreen() {
         },
         verificationStatus: 'pending',
         isVerified: false,
-        submittedAt: new Date().toISOString()
+        submittedAt: new Date().toISOString(),
+        createUser: !userId // Flag to indicate if we need to create a user
       };
 
       console.log('Submitting verification data:', verificationData);
@@ -433,6 +455,16 @@ export default function ManualVerificationScreen() {
       if (response.ok) {
         const responseData = await response.json();
         console.log('Verification submitted successfully:', responseData);
+        
+        // Update local user data to reflect the completed verification
+        const userData = await AsyncStorage.getItem('@user_data');
+        if (userData) {
+          const user = JSON.parse(userData);
+          user.verificationStatus = 'pending';
+          user.isRejected = false;
+          await AsyncStorage.setItem('@user_data', JSON.stringify(user));
+          console.log('Updated local user data after verification completion');
+        }
         
         Alert.alert(
           'Verification Submitted!',
