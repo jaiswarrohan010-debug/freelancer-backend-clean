@@ -144,6 +144,72 @@ export default function FreelancerHomeScreen() {
       if (profile.verificationStatus === 'rejected') {
         setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
         setShowRejectionModal(true);
+      } else if (profile.verificationStatus === 'pending') {
+        // Check if user has any pending verification entries
+        try {
+          const verificationResponse = await fetch(`${API_BASE_URL}/verifications/initial`, {
+            headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+          });
+          
+          if (verificationResponse.ok) {
+            const initialVerifications = await verificationResponse.json();
+            const userInitialVerification = initialVerifications.verifications?.find(v => v.userId === (user.id || user._id));
+            
+            const resubmissionResponse = await fetch(`${API_BASE_URL}/verifications/resubmissions`, {
+              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+            });
+            
+            let userResubmissionVerification = null;
+            if (resubmissionResponse.ok) {
+              const resubmissionVerifications = await resubmissionResponse.json();
+              userResubmissionVerification = resubmissionVerifications.verifications?.find(v => v.userId === (user.id || user._id));
+            }
+            
+            // If user has any pending verification (initial or resubmission), don't show rejection modal
+            if (userInitialVerification || userResubmissionVerification) {
+              console.log('User has pending verification, showing "Under Review"');
+              setShowRejectionModal(false);
+              setRejectionReason('');
+            } else {
+              // User clicked "Re-Submit" but hasn't completed verification yet
+              setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+              setShowRejectionModal(true);
+            }
+          } else {
+            // Fallback to old logic if verification endpoints fail
+            const hasVerificationDocuments = profile.documents && 
+              profile.documents.aadhaar && 
+              profile.documents.aadhaar.front && 
+              profile.documents.aadhaar.back &&
+              profile.documents.pan && 
+              profile.documents.pan.front;
+            
+            if (!hasVerificationDocuments) {
+              setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+              setShowRejectionModal(true);
+            } else {
+              setShowRejectionModal(false);
+              setRejectionReason('');
+            }
+          }
+        } catch (error) {
+          console.error('Error checking verification status:', error);
+          // Fallback to old logic
+          const hasVerificationDocuments = profile.documents && 
+            profile.documents.aadhaar && 
+            profile.documents.aadhaar.front && 
+            profile.documents.aadhaar.back &&
+            profile.documents.pan && 
+            profile.documents.pan.front;
+          
+          if (!hasVerificationDocuments) {
+            setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+            setShowRejectionModal(true);
+          } else {
+            setShowRejectionModal(false);
+            setRejectionReason('');
+          }
+        }
       } else {
         setShowRejectionModal(false);
         setRejectionReason('');
@@ -233,6 +299,14 @@ export default function FreelancerHomeScreen() {
     checkProfileCompletion();
   }, []);
 
+  // Add focus effect to refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh profile data when screen comes into focus
+      checkProfileCompletion();
+    }, [])
+  );
+
   useEffect(() => {
     // Only filter after currentUserId is loaded and jobs are fetched
     if (!currentUserId) return;
@@ -311,8 +385,8 @@ export default function FreelancerHomeScreen() {
                   const data = await response.json();
                   
                   if (response.ok) {
-                    // Navigate to manual verification page with resubmission flag
-                    router.push('/auth/manual-verification?resubmit=true');
+                    // Navigate to the dedicated resubmission page
+                    router.push('/auth/resubmit-verification');
                   } else {
                     Alert.alert('Error', data.message || 'Failed to resubmit verification');
                   }
