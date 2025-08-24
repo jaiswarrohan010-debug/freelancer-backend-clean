@@ -174,9 +174,17 @@ export default function ManualVerificationScreen() {
     return '';
   };
 
+  const [dateError, setDateError] = useState('');
+  const [pincodeError, setPincodeError] = useState('');
+
   const handleDateInputChange = (text) => {
     const formatted = formatDateInput(text);
     setDateInput(formatted);
+    
+    // Clear error when user starts typing
+    if (text.length > 0) {
+      setDateError('');
+    }
     
     // If we have a complete date (dd/mm/yyyy), validate and set it
     if (formatted.length === 10) {
@@ -185,23 +193,26 @@ export default function ManualVerificationScreen() {
       const month = parseInt(parts[1]);
       const year = parseInt(parts[2]);
       
-      // Enhanced validation
+      // Enhanced validation with proper calendar date checking
       const currentDate = new Date();
       const inputDate = new Date(year, month - 1, day);
       
-      // Check if date is valid
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= currentDate.getFullYear()) {
+      // Check if the date actually exists in calendar
+      const isValidDate = inputDate.getDate() === day && 
+                         inputDate.getMonth() === month - 1 && 
+                         inputDate.getFullYear() === year;
+      
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= currentDate.getFullYear() && isValidDate) {
         // Check if it's not a future date
         if (inputDate <= currentDate) {
           setDateOfBirth(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+          setDateError('');
         } else {
-          Alert.alert('Invalid Date', 'Date of birth cannot be in the future');
-          setDateInput('');
+          setDateError('Date of birth cannot be in the future');
           setDateOfBirth('');
         }
       } else {
-        Alert.alert('Invalid Date', 'Please enter a valid date of birth');
-        setDateInput('');
+        setDateError('Please enter a valid date');
         setDateOfBirth('');
       }
     }
@@ -222,6 +233,13 @@ export default function ManualVerificationScreen() {
     const limitedText = numericText.slice(0, 6);
     
     setPincode(limitedText);
+    
+    // Show error message if not 6 digits
+    if (limitedText.length > 0 && limitedText.length < 6) {
+      setPincodeError('Please enter a valid pincode');
+    } else {
+      setPincodeError('');
+    }
   };
 
   const takeProfilePhoto = async () => {
@@ -609,7 +627,7 @@ export default function ManualVerificationScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date of Birth *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, dateError && styles.inputError]}
             value={dateInput}
             onChangeText={handleDateInputChange}
             placeholder="DD/MM/YYYY"
@@ -617,6 +635,9 @@ export default function ManualVerificationScreen() {
             keyboardType="numeric"
             maxLength={10}
           />
+          {dateError ? (
+            <Text style={styles.errorText}>{dateError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputGroup}>
@@ -649,7 +670,7 @@ export default function ManualVerificationScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Pincode *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, pincodeError && styles.inputError]}
             value={pincode}
             onChangeText={handlePincodeChange}
             placeholder="Enter 6-digit pincode"
@@ -657,6 +678,9 @@ export default function ManualVerificationScreen() {
             keyboardType="numeric"
             maxLength={6}
           />
+          {pincodeError ? (
+            <Text style={styles.errorText}>{pincodeError}</Text>
+          ) : null}
         </View>
 
         <Text style={styles.sectionTitle}>Profile Photo</Text>
@@ -1009,5 +1033,14 @@ const styles = StyleSheet.create({
   dropdownOptionText: {
     fontSize: 16,
     color: '#333',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginTop: 5,
+    marginLeft: 5,
   },
 });
