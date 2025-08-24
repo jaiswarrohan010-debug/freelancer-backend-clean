@@ -3,16 +3,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { API_BASE_URL } from '../utils/api';
 
@@ -295,6 +295,18 @@ export default function ResubmitVerificationScreen() {
         return;
       }
 
+      // Validate pincode
+      if (pincode.length !== 6) {
+        Alert.alert('Error', 'Please enter a valid 6-digit pincode');
+        return;
+      }
+
+      // Validate date of birth
+      if (!dateOfBirth) {
+        Alert.alert('Error', 'Please enter a valid date of birth');
+        return;
+      }
+
       // Validate profile photo
       if (!profilePhoto) {
         Alert.alert('Error', 'Please take a profile photo');
@@ -447,15 +459,43 @@ export default function ResubmitVerificationScreen() {
     const formatted = formatDateInput(text);
     setDateInput(formatted);
     
-    // Convert to YYYY-MM-DD format for the actual date
-    const numbers = text.replace(/\D/g, '');
-    if (numbers.length === 8) {
-      const day = numbers.slice(0, 2);
-      const month = numbers.slice(2, 4);
-      const year = numbers.slice(4);
-      const dateString = `${year}-${month}-${day}`;
-      setDateOfBirth(dateString);
+    // If we have a complete date (dd/mm/yyyy), validate and set it
+    if (formatted.length === 10) {
+      const parts = formatted.split('/');
+      const day = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      const year = parseInt(parts[2]);
+      
+      // Enhanced validation
+      const currentDate = new Date();
+      const inputDate = new Date(year, month - 1, day);
+      
+      // Check if date is valid
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= currentDate.getFullYear()) {
+        // Check if it's not a future date
+        if (inputDate <= currentDate) {
+          setDateOfBirth(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+        } else {
+          Alert.alert('Invalid Date', 'Date of birth cannot be in the future');
+          setDateInput('');
+          setDateOfBirth('');
+        }
+      } else {
+        Alert.alert('Invalid Date', 'Please enter a valid date of birth');
+        setDateInput('');
+        setDateOfBirth('');
+      }
     }
+  };
+
+  const handlePincodeChange = (text) => {
+    // Only allow numeric input
+    const numericText = text.replace(/\D/g, '');
+    
+    // Limit to 6 digits
+    const limitedText = numericText.slice(0, 6);
+    
+    setPincode(limitedText);
   };
 
   const renderDocumentUpload = (documentType, side, label, required = true) => {
@@ -602,7 +642,7 @@ export default function ResubmitVerificationScreen() {
           <TextInput
             style={styles.input}
             value={pincode}
-            onChangeText={setPincode}
+            onChangeText={handlePincodeChange}
             placeholder="Enter 6-digit pincode"
             placeholderTextColor="#999"
             keyboardType="numeric"

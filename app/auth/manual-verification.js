@@ -185,9 +185,24 @@ export default function ManualVerificationScreen() {
       const month = parseInt(parts[1]);
       const year = parseInt(parts[2]);
       
-      // Basic validation
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= new Date().getFullYear()) {
-        setDateOfBirth(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+      // Enhanced validation
+      const currentDate = new Date();
+      const inputDate = new Date(year, month - 1, day);
+      
+      // Check if date is valid
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= currentDate.getFullYear()) {
+        // Check if it's not a future date
+        if (inputDate <= currentDate) {
+          setDateOfBirth(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+        } else {
+          Alert.alert('Invalid Date', 'Date of birth cannot be in the future');
+          setDateInput('');
+          setDateOfBirth('');
+        }
+      } else {
+        Alert.alert('Invalid Date', 'Please enter a valid date of birth');
+        setDateInput('');
+        setDateOfBirth('');
       }
     }
   };
@@ -197,6 +212,16 @@ export default function ManualVerificationScreen() {
   const handleGenderSelect = (selectedGender) => {
     setGender(selectedGender);
     setShowGenderDropdown(false);
+  };
+
+  const handlePincodeChange = (text) => {
+    // Only allow numeric input
+    const numericText = text.replace(/\D/g, '');
+    
+    // Limit to 6 digits
+    const limitedText = numericText.slice(0, 6);
+    
+    setPincode(limitedText);
   };
 
   const takeProfilePhoto = async () => {
@@ -358,6 +383,18 @@ export default function ManualVerificationScreen() {
       // Validate required fields
       if (!name || !dateOfBirth || !gender || !address || !pincode) {
         Alert.alert('Error', 'Please fill in all profile details');
+        return;
+      }
+
+      // Validate pincode
+      if (pincode.length !== 6) {
+        Alert.alert('Error', 'Please enter a valid 6-digit pincode');
+        return;
+      }
+
+      // Validate date of birth
+      if (!dateOfBirth) {
+        Alert.alert('Error', 'Please enter a valid date of birth');
         return;
       }
 
@@ -614,7 +651,7 @@ export default function ManualVerificationScreen() {
           <TextInput
             style={styles.input}
             value={pincode}
-            onChangeText={setPincode}
+            onChangeText={handlePincodeChange}
             placeholder="Enter 6-digit pincode"
             placeholderTextColor="#999"
             keyboardType="numeric"
