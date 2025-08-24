@@ -156,6 +156,9 @@ export default function FreelancerHomeScreen() {
       }
       const profile = await response.json();
       console.log('Profile data received:', profile);
+      console.log('🔍 Profile verification status:', profile.verificationStatus);
+      console.log('🔍 Profile isVerified:', profile.isVerified);
+      console.log('🔍 Profile resubmissionCount:', profile.resubmissionCount);
       // Check if profile is complete (all required fields filled)
       const isProfileComplete = Boolean(
         profile.name && typeof profile.name === 'string' && profile.name.trim() &&
@@ -420,6 +423,20 @@ export default function FreelancerHomeScreen() {
           </Text>
         </View>
       )}
+      
+      {/* Debug Info */}
+      <View style={{
+        backgroundColor: '#f0f0f0',
+        padding: 8,
+        marginHorizontal: 16,
+        marginTop: 8,
+      }}>
+        <Text style={{ fontSize: 12, color: '#666' }}>
+          Debug: showUnderReviewMessage={showUnderReviewMessage.toString()}, 
+          verificationStatus={verificationStatus}, 
+          isVerified={isVerified.toString()}
+        </Text>
+      </View>
 
       {/* Verified but Profile Incomplete Alert */}
       {profileChecked && isVerified && !profileComplete && (
