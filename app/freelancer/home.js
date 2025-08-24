@@ -28,6 +28,7 @@ export default function FreelancerHomeScreen() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [showUnderReviewMessage, setShowUnderReviewMessage] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
   const loadCurrentUserId = async () => {
     try {
@@ -313,15 +314,22 @@ export default function FreelancerHomeScreen() {
     }, [currentUserId])
   );
 
-  // Auto-refresh every 20 seconds
+  // Auto-refresh every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (currentUserId) {
         console.log('🔄 Auto-refreshing dashboard...');
-        fetchJobs();
-        checkProfileCompletion();
+        setIsAutoRefreshing(true);
+        try {
+          await fetchJobs();
+          await checkProfileCompletion();
+        } catch (error) {
+          console.error('Auto-refresh error:', error);
+        } finally {
+          setIsAutoRefreshing(false);
+        }
       }
-    }, 20000); // 20 seconds
+    }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
   }, [currentUserId]);
@@ -337,7 +345,11 @@ export default function FreelancerHomeScreen() {
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Freelancer Dashboard</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.placeholder}>
+          {isAutoRefreshing && (
+            <ActivityIndicator size="small" color={colors.primary} />
+          )}
+        </View>
       </View>
 
       {/* Rejection Modal */}
