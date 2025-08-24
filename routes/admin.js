@@ -603,6 +603,15 @@ router.post('/verifications/:id/approve', authenticateAdmin, async (req, res) =>
         // Update user with verification data
         const user = await User.findById(verification.userId);
         if (user) {
+            console.log('🔍 Debug: Copying verification data to user');
+            console.log('🔍 Verification profileImage:', verification.profileImage);
+            console.log('🔍 Verification documents:', verification.documents);
+            console.log('🔍 User before update:', {
+                name: user.name,
+                profileImage: user.profileImage,
+                isVerified: user.isVerified
+            });
+            
             // Copy verification data to user
             user.name = verification.name;
             user.firstName = verification.firstName;
@@ -643,6 +652,13 @@ router.post('/verifications/:id/approve', authenticateAdmin, async (req, res) =>
             }
 
             await user.save();
+            
+            console.log('🔍 User after update:', {
+                name: user.name,
+                profileImage: user.profileImage,
+                isVerified: user.isVerified,
+                verificationStatus: user.verificationStatus
+            });
         }
 
         res.json({
