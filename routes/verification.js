@@ -54,7 +54,7 @@ router.get('/debug', async (req, res) => {
 });
 
 // GET /api/verifications/initial - Get initial verifications
-router.get('/initial', async (req, res) => {
+router.get('/initial', firebaseAuth, async (req, res) => {
     try {
         const verifications = await Verification.find({ type: 'initial', status: 'pending' })
             .populate('userId', 'name phone email')
@@ -75,7 +75,7 @@ router.get('/initial', async (req, res) => {
 });
 
 // GET /api/verifications/resubmissions - Get resubmission verifications
-router.get('/resubmissions', async (req, res) => {
+router.get('/resubmissions', firebaseAuth, async (req, res) => {
     try {
         const verifications = await Verification.find({ type: 'resubmission', status: 'pending' })
             .populate('userId', 'name phone email')
@@ -96,7 +96,7 @@ router.get('/resubmissions', async (req, res) => {
 });
 
 // GET /api/verifications/:id - Get single verification
-router.get('/:id', async (req, res) => {
+router.get('/:id', firebaseAuth, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -146,11 +146,14 @@ router.post('/submit', async (req, res) => {
 
         // Find existing user by phone number
         let user = await User.findOne({ phone: phone });
+        console.log('🔍 Looking for user with phone:', phone);
+        console.log('🔍 User found:', user ? user._id : 'No user found');
+        console.log('🔍 createUser flag:', req.body.createUser);
         
         if (!user) {
             // Check if we should create a new user
             if (req.body.createUser) {
-                console.log('Creating new user for phone:', phone);
+                console.log('✅ Creating new user for phone:', phone);
                 
                 // Create new user
                 const userData = {
@@ -280,7 +283,7 @@ router.post('/submit', async (req, res) => {
 });
 
 // POST /api/verifications/:id/approve - Approve verification
-router.post('/:id/approve', async (req, res) => {
+router.post('/:id/approve', firebaseAuth, async (req, res) => {
     try {
         const { id } = req.params;
         const { adminComments } = req.body;
@@ -331,7 +334,7 @@ router.post('/:id/approve', async (req, res) => {
 });
 
 // POST /api/verifications/:id/reject - Reject verification
-router.post('/:id/reject', async (req, res) => {
+router.post('/:id/reject', firebaseAuth, async (req, res) => {
     try {
         const { id } = req.params;
         const { adminComments } = req.body;
@@ -372,7 +375,7 @@ router.post('/:id/reject', async (req, res) => {
 });
 
 // DELETE /api/verifications/:id - Delete verification
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', firebaseAuth, async (req, res) => {
     try {
         const { id } = req.params;
 

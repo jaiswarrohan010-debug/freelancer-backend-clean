@@ -586,29 +586,56 @@
     <script>
         let adminToken = null;
         let currentUserId = null;
+        let currentVerificationId = null;
         
         // Check API status on page load
-        window.addEventListener('load', checkAPIStatus);
+        window.addEventListener('load', () => {
+            checkAPIStatus();
+            // Retry after 5 seconds in case of initial failure
+            setTimeout(checkAPIStatus, 5000);
+        });
         
         async function checkAPIStatus() {
             const statusElement = document.getElementById('apiStatus');
             const statusText = document.getElementById('apiStatusText');
             
             try {
-                const response = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                console.log('🔍 Checking API status...');
+                
+                // First try a simple GET request to test basic connectivity
+                const testResponse = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/test', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
-                if (response.ok) {
-                    statusElement.className = 'api-status';
-                    statusText.textContent = 'Connected to API';
+                console.log('📡 Test response status:', testResponse.status);
+                
+                if (testResponse.ok) {
+                    // If basic connectivity works, try the login endpoint
+                    const loginResponse = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                    });
+                    
+                    console.log('📡 Login response status:', loginResponse.status);
+                    
+                    if (loginResponse.ok) {
+                        statusElement.className = 'api-status';
+                        statusText.textContent = 'Connected to API';
+                        console.log('✅ API status: Connected');
+                    } else {
+                        statusElement.className = 'api-status error';
+                        statusText.textContent = 'API Error: ' + loginResponse.status;
+                        console.log('❌ API status: Login failed');
+                    }
                 } else {
                     statusElement.className = 'api-status error';
-                    statusText.textContent = 'API Error: ' + response.status;
+                    statusText.textContent = 'API Error: ' + testResponse.status;
+                    console.log('❌ API status: Test failed');
                 }
             } catch (error) {
+                console.error('❌ API status check error:', error);
                 statusElement.className = 'api-status error';
                 statusText.textContent = 'Cannot connect to API (Server not running?)';
             }
@@ -644,7 +671,7 @@
         async function loadBadgeCounts() {
             try {
                 // Load initial verification count
-                const initialResponse = await fetch('https://freelancer-backend-jv21.onrender.com/api/verifications/initial', {
+                const initialResponse = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/verifications/initial', {
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 if (initialResponse.ok) {
@@ -653,7 +680,7 @@
                 }
                 
                 // Load resubmission count
-                const resubmissionResponse = await fetch('https://freelancer-backend-jv21.onrender.com/api/verifications/resubmissions', {
+                const resubmissionResponse = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/verifications/resubmissions', {
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 if (resubmissionResponse.ok) {
@@ -666,28 +693,63 @@
         }
         
         function switchTab(tab) {
+            console.log(`🔄 Switching to tab: ${tab}`);
+            
             // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
             
             // Hide all sections
-            document.querySelectorAll('.users-section').forEach(section => section.style.display = 'none');
+            document.querySelectorAll('.users-section').forEach(section => {
+                console.log(`🙈 Hiding section: ${section.id}`);
+                section.style.display = 'none';
+            });
             
-            // Show selected section
-            document.getElementById(`${tab}-section`).style.display = 'block';
+            // Show selected section - handle special case for 'all' tab
+            let selectedSection;
+            if (tab === 'all') {
+                selectedSection = document.getElementById('all-users-section');
+            } else {
+                selectedSection = document.getElementById(`${tab}-section`);
+            }
+            
+            console.log(`👁️ Showing section: ${selectedSection?.id}`);
+            if (selectedSection) {
+                selectedSection.style.display = 'block';
+            } else {
+                console.error(`❌ Section not found for tab: ${tab}`);
+            }
             
             // Load appropriate data
+            console.log('🔑 Admin token available:', !!adminToken);
+            
             if (tab === 'all') {
+                console.log('📋 Loading all users...');
                 loadUsers();
             } else if (tab === 'initial') {
+                console.log('📋 Loading initial verifications...');
                 loadInitialVerifications();
             } else if (tab === 'resubmissions') {
+                console.log('📋 Loading resubmission verifications...');
                 loadResubmissionVerifications();
             }
         }
         
         async function loadUsers() {
+            console.log('🔄 Loading users...');
             const usersList = document.getElementById('usersList');
+            console.log('📋 usersList element:', usersList);
+            
+            // Check if the section is visible
+            const allUsersSection = document.getElementById('all-users-section');
+            console.log('👁️ all-users-section visibility:', allUsersSection?.style.display);
+            console.log('👁️ all-users-section element:', allUsersSection);
+            
+            if (!usersList) {
+                console.error('❌ usersList element not found!');
+                return;
+            }
+            
             usersList.innerHTML = '<div class="loading">Loading users...</div>';
             
             try {
@@ -695,12 +757,16 @@
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 
+                console.log('📡 Response status:', response.status);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
+                console.log('📋 Response data:', data);
                 const users = data.verifications || [];
+                console.log(`👥 Found ${users.length} users`);
                 
                 // Update stats
                 const pending = users.filter(u => u.verificationStatus === 'pending').length;
@@ -712,18 +778,21 @@
                 document.getElementById('rejectedCount').textContent = rejected;
                 document.getElementById('totalCount').textContent = users.length;
                 
-                // Load badge counts for all tabs
-                loadBadgeCounts();
+                // Load badge counts for all tabs (commented out temporarily for debugging)
+                // loadBadgeCounts();
                 
                 // Display users
+                console.log('🎨 Starting to display users...');
                 usersList.innerHTML = '';
                 
                 if (users.length === 0) {
+                    console.log('📭 No users to display');
                     usersList.innerHTML = '<div class="loading">No users found</div>';
                     return;
                 }
                 
-                users.forEach(user => {
+                users.forEach((user, index) => {
+                    console.log(`👤 Processing user ${index + 1}:`, user.name || user.fullName || 'Unknown');
                     const userName = user.name || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User';
                     const userItem = document.createElement('div');
                     userItem.className = 'user-item';
@@ -731,7 +800,7 @@
                     userItem.innerHTML = `
                         <div class="user-info">
                             <h3>${userName}</h3>
-                            <p>${user.email} • ${user.phone || 'No phone'} • ID: ${user._id}</p>
+                            <p>${user.email || 'No email'} • ${user.phone || 'No phone'} • ID: ${user._id}</p>
                         </div>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <span class="status-badge status-${user.verificationStatus}">
@@ -747,7 +816,10 @@
                     `;
                     
                     usersList.appendChild(userItem);
+                    console.log(`✅ Added user ${index + 1} to DOM`);
                 });
+                
+                console.log(`🎉 Finished displaying ${users.length} users`);
                 
             } catch (error) {
                 console.error('Failed to load users:', error);
@@ -771,7 +843,7 @@
             usersList.innerHTML = '<div class="loading">Loading initial verifications...</div>';
             
             try {
-                const response = await fetch('https://freelancer-backend-jv21.onrender.com/api/verifications/initial', {
+                const response = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/verifications/initial', {
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 
@@ -828,7 +900,7 @@
             usersList.innerHTML = '<div class="loading">Loading resubmission verifications...</div>';
             
             try {
-                const response = await fetch('https://freelancer-backend-jv21.onrender.com/api/verifications/resubmissions', {
+                const response = await fetch('https://freelancer-backend-jv21.onrender.com/api/admin/verifications/resubmissions', {
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 
@@ -881,10 +953,17 @@
         }
         
         async function verifyUserFromQueue(verificationId, type) {
-            currentUserId = verificationId;
+            currentVerificationId = verificationId;
+            currentUserId = null; // Reset user ID
+            console.log('🔍 verifyUserFromQueue called:', {
+                verificationId: verificationId,
+                type: type,
+                currentVerificationId: currentVerificationId,
+                currentUserId: currentUserId
+            });
             
             try {
-                const response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/verifications/${verificationId}`, {
+                const response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${verificationId}`, {
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 
@@ -968,21 +1047,24 @@
         
         async function verifyUser(userId) {
             currentUserId = userId;
+            currentVerificationId = null; // Reset verification ID
             
             try {
-                const response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/users/${userId}`, {
+                // First, get user details
+                const userResponse = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/users/${userId}`, {
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                if (!userResponse.ok) {
+                    throw new Error(`HTTP ${userResponse.status}: ${userResponse.statusText}`);
                 }
                 
-                const data = await response.json();
-                const user = data.user || data;
+                const userData = await userResponse.json();
+                const user = userData.user || userData;
+                const verification = userData.verification;
                 
-                // Load user details in modal
-                loadUserDetailsInModal(user);
+                // Load user details in modal with verification data
+                loadUserDetailsInModal(user, verification);
                 
                 // Show modal
                 document.getElementById('verificationModal').style.display = 'block';
@@ -993,7 +1075,7 @@
             }
         }
         
-        function loadUserDetailsInModal(user) {
+        function loadUserDetailsInModal(user, verification = null) {
             const userDetails = document.getElementById('userDetails');
             const documentsGrid = document.getElementById('documentsGrid');
             
@@ -1038,16 +1120,24 @@
                 </div>
             `;
             
-            // Load documents
-            const documents = user.documents || {};
+            // Load documents - use verification data if available, otherwise fall back to user data
+            const documents = verification?.documents || user.documents || {};
+            const profileImage = verification?.profileImage || user.profileImage;
             documentsGrid.innerHTML = '';
             
+            console.log('📋 Loading documents for user:', user._id);
+            console.log('📋 Verification data:', verification);
+            console.log('📋 Documents:', documents);
+            console.log('📋 Profile image:', profileImage);
+            console.log('📋 User profile image:', user.profileImage);
+            console.log('📋 Verification profile image:', verification?.profileImage);
+            
             // Profile Photo
-            if (user.profileImage) {
+            if (profileImage) {
                 documentsGrid.innerHTML += `
                     <div class="document-item">
                         <h4>Profile Photo</h4>
-                        <img src="${user.profileImage}" alt="Profile Photo" class="document-image" onclick="openImageModal(this.src)">
+                        <img src="${profileImage}" alt="Profile Photo" class="document-image" onclick="openImageModal(this.src)">
                     </div>
                 `;
             } else {
@@ -1188,12 +1278,17 @@
             
             try {
                 // Check if this is a verification from queue or regular user
-                const isFromQueue = currentUserId.length === 24; // MongoDB ObjectId length
+                const isFromQueue = currentVerificationId !== null;
+                console.log('🔍 Approval debug:', {
+                    currentUserId: currentUserId,
+                    currentVerificationId: currentVerificationId,
+                    isFromQueue: isFromQueue
+                });
                 
                 let response;
                 if (isFromQueue) {
                     // This is a verification from the queue
-                    response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/verifications/${currentUserId}/approve`, {
+                    response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${currentVerificationId}/approve`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1255,12 +1350,17 @@
             
             try {
                 // Check if this is a verification from queue or regular user
-                const isFromQueue = currentUserId.length === 24; // MongoDB ObjectId length
+                const isFromQueue = currentVerificationId !== null;
+                console.log('🔍 Rejection debug:', {
+                    currentUserId: currentUserId,
+                    currentVerificationId: currentVerificationId,
+                    isFromQueue: isFromQueue
+                });
                 
                 let response;
                 if (isFromQueue) {
                     // This is a verification from the queue
-                    response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/verifications/${currentUserId}/reject`, {
+                    response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${currentVerificationId}/reject`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1339,7 +1439,7 @@
             }
             
             try {
-                const response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/verifications/${verificationId}`, {
+                const response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${verificationId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${adminToken}` }
                 });
