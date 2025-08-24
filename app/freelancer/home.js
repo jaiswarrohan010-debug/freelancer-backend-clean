@@ -158,6 +158,9 @@ export default function FreelancerHomeScreen() {
       const profile = await response.json();
       console.log('Profile data received:', profile);
       console.log('🔍 Profile verification status:', profile.verificationStatus);
+      console.log('🔍 Profile verification status (typeof):', typeof profile.verificationStatus);
+      console.log('🔍 Profile verification status (length):', profile.verificationStatus ? profile.verificationStatus.length : 'null/undefined');
+      console.log('🔍 Profile verification status (trimmed):', profile.verificationStatus ? `"${profile.verificationStatus.trim()}"` : 'null/undefined');
       console.log('🔍 Profile isVerified:', profile.isVerified);
       console.log('🔍 Profile resubmissionCount:', profile.resubmissionCount);
       // Check if profile is complete (all required fields filled)
@@ -199,6 +202,11 @@ export default function FreelancerHomeScreen() {
         setRejectionReason('');
         return; // Exit early, don't check for pending verifications
       } else {
+        console.log('🔍 Condition check failed:');
+        console.log('🔍 profile.verificationStatus === "pending":', profile.verificationStatus === 'pending');
+        console.log('🔍 profile.verificationStatus === "rejected":', profile.verificationStatus === 'rejected');
+        console.log('🔍 profile.verificationStatus value:', `"${profile.verificationStatus}"`);
+        console.log('🔍 profile.verificationStatus type:', typeof profile.verificationStatus);
         console.log('✅ User status is not pending/rejected, no rejection modal');
         setShowRejectionModal(false);
         setRejectionReason('');
