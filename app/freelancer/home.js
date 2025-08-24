@@ -118,11 +118,10 @@ export default function FreelancerHomeScreen() {
           console.log('❌ Refresh - User is rejected, showing rejection modal');
           setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
           setShowRejectionModal(true);
-        } else if (profile.verificationStatus === 'rejected' && profile.resubmissionCount && profile.resubmissionCount > 0) {
-          // User has clicked resubmit but hasn't completed the process yet - show rejection reason
-          console.log('🔄 Refresh - User has clicked resubmit but status still rejected, showing rejection reason');
-          setRejectionReason(profile.adminComments || 'Your verification was rejected. Please review and resubmit your documents.');
-          setShowRejectionModal(true);
+        } else if (profile.verificationStatus === 'pending' && profile.resubmissionCount && profile.resubmissionCount > 0) {
+          // User has completed resubmission and is now pending - show "Under Review" message
+          console.log('🔄 Refresh - User has completed resubmission and is now pending - showing under review message');
+          // Don't show rejection modal for completed resubmissions
         }
       }
     } catch (error) {
@@ -187,11 +186,10 @@ export default function FreelancerHomeScreen() {
         setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
         setShowRejectionModal(true);
         return; // Exit early, don't check for pending verifications
-      } else if (profile.verificationStatus === 'rejected' && profile.resubmissionCount && profile.resubmissionCount > 0) {
-        // User has clicked resubmit but hasn't completed the process yet - show rejection reason
-        console.log('🔄 User has clicked resubmit but status still rejected, showing rejection reason');
-        setRejectionReason(profile.adminComments || 'Your verification was rejected. Please review and resubmit your documents.');
-        setShowRejectionModal(true);
+      } else if (profile.verificationStatus === 'pending' && profile.resubmissionCount && profile.resubmissionCount > 0) {
+        // User has completed resubmission and is now pending - show "Under Review" message
+        console.log('🔄 User has completed resubmission and is now pending - showing under review message');
+        // Don't show rejection modal for completed resubmissions
         return; // Exit early, don't check for pending verifications
       } else if (profile.verificationStatus === 'pending') {
         console.log('⏳ User status is pending, checking for verification entries...');

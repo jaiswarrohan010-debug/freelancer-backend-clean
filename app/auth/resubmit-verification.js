@@ -579,15 +579,7 @@ export default function ResubmitVerificationScreen() {
               >
                 <Text style={styles.dropdownOptionText}>Female</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownOption}
-                onPress={() => {
-                  setGender('Other');
-                  setShowGenderDropdown(false);
-                }}
-              >
-                <Text style={styles.dropdownOptionText}>Other</Text>
-              </TouchableOpacity>
+
             </View>
           )}
         </View>
