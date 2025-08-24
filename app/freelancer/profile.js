@@ -95,13 +95,18 @@ export default function FreelancerProfileScreen() {
             }
             
             // Preload profile image with full URL if needed (only if verified)
+            console.log('🔍 Profile debug - isVerified:', profile.isVerified);
+            console.log('🔍 Profile debug - profileImage:', profile.profileImage);
+            console.log('🔍 Profile debug - profileImage type:', typeof profile.profileImage);
+            
             if (profile.isVerified && profile.profileImage) {
               // Remove '/api' from API_BASE_URL for static images
               const baseUrl = API_BASE_URL.replace(/\/api$/, '');
               const imgUrl = profile.profileImage.startsWith('http') ? profile.profileImage : `${baseUrl}${profile.profileImage}`;
-              console.log('profileImage', imgUrl);
+              console.log('🔍 Profile image URL:', imgUrl);
               setProfileImage(imgUrl);
             } else {
+              console.log('🔍 No profile image - isVerified:', profile.isVerified, 'profileImage:', profile.profileImage);
               setProfileImage(null);
             }
             
