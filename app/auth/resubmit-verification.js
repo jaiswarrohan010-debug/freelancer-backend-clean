@@ -124,8 +124,6 @@ export default function ResubmitVerificationScreen() {
 
   const pickImage = async (documentType, side) => {
     try {
-      setUploading(true);
-      
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -136,44 +134,77 @@ export default function ResubmitVerificationScreen() {
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         
-        // Upload to Cloudinary
-        const formData = new FormData();
-        formData.append('file', {
-          uri: imageUri,
-          type: 'image/jpeg',
-          name: 'document.jpg',
-        });
-        formData.append('upload_preset', 'people-app-documents');
-
-        const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/dzpqrejsi/image/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json();
-          const cloudinaryUrl = uploadResult.secure_url;
-          
-          // Update documents state
-          setDocuments(prev => ({
-            ...prev,
-            [documentType]: {
-              ...prev[documentType],
-              [side]: cloudinaryUrl
-            }
-          }));
-          
-          // Update upload status
-          setUploadStatus(prev => ({
-            ...prev,
-            [`${documentType}${side.charAt(0).toUpperCase() + side.slice(1)}`]: true
-          }));
-          
-          console.log(`${documentType} ${side} uploaded successfully:`, cloudinaryUrl);
-        } else {
-          throw new Error('Failed to upload image');
-        }
+        // Upload to server first, then update state with server URL
+        await uploadDocument(documentType, side, imageUri);
       }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadDocument = async (documentType, side, imageUri) => {
+    try {
+      setUploading(true);
+      
+      console.log('Uploading document:', documentType, side, imageUri);
+      
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('document', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: `${documentType}_${side}_${Date.now()}.jpg`
+      });
+      
+      // Upload file to server
+      const response = await fetch(`${API_BASE_URL}/upload/single`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Upload response status:', response.status);
+      console.log('Upload response headers:', response.headers);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload response error:', errorText);
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Upload result:', result);
+      console.log('Server URL received:', result.file.url);
+      
+      // Update documents state with complete server URL
+      const completeUrl = result.file.url.startsWith('http') 
+        ? result.file.url 
+        : `https://freelancer-backend-jv21.onrender.com${result.file.url}`;
+      
+      setDocuments(prev => {
+        const newState = {
+          ...prev,
+          [documentType]: {
+            ...prev[documentType],
+            [side]: completeUrl
+          }
+        };
+        console.log('Updated documents state:', newState);
+        console.log('Complete URL for image:', completeUrl);
+        return newState;
+      });
+      
+      // Update upload status
+      setUploadStatus(prev => ({
+        ...prev,
+        [`${documentType}${side.charAt(0).toUpperCase() + side.slice(1)}`]: true
+      }));
+
+      Alert.alert('Success', `${documentType.toUpperCase()} ${side} uploaded successfully!`);
+      
     } catch (error) {
       console.error('Upload error:', error);
       Alert.alert('Error', `Failed to upload document: ${error.message}`);
@@ -184,8 +215,6 @@ export default function ResubmitVerificationScreen() {
 
   const takeProfilePhoto = async () => {
     try {
-      setUploading(true);
-      
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
@@ -195,33 +224,63 @@ export default function ResubmitVerificationScreen() {
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         
-        // Upload to Cloudinary
-        const formData = new FormData();
-        formData.append('file', {
-          uri: imageUri,
-          type: 'image/jpeg',
-          name: 'profile.jpg',
-        });
-        formData.append('upload_preset', 'people-app-documents');
-
-        const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/dzpqrejsi/image/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json();
-          const cloudinaryUrl = uploadResult.secure_url;
-          
-          setProfilePhoto(cloudinaryUrl);
-          setUploadStatus(prev => ({ ...prev, profilePhoto: true }));
-          console.log('Profile photo uploaded successfully:', cloudinaryUrl);
-        } else {
-          throw new Error('Failed to upload image');
-        }
+        // Upload profile photo to server
+        await uploadProfilePhoto(imageUri);
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Error taking profile photo:', error);
+      Alert.alert('Error', 'Failed to take profile photo');
+    }
+  };
+
+  const uploadProfilePhoto = async (imageUri) => {
+    try {
+      setUploading(true);
+      
+      console.log('Uploading profile photo:', imageUri);
+      
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('document', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: `profile_photo_${Date.now()}.jpg`
+      });
+      
+      // Upload file to server
+      const response = await fetch(`${API_BASE_URL}/upload/single`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Profile photo upload response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Profile photo upload response error:', errorText);
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Profile photo upload result:', result);
+      console.log('Profile photo server URL received:', result.file.url);
+      
+      // Update profile photo with complete server URL
+      const completeUrl = result.file.url.startsWith('http') 
+        ? result.file.url 
+        : `https://freelancer-backend-jv21.onrender.com${result.file.url}`;
+      
+      setProfilePhoto(completeUrl);
+      setUploadStatus(prev => ({ ...prev, profilePhoto: true }));
+      console.log('Profile photo uploaded successfully:', completeUrl);
+      
+      Alert.alert('Success', 'Profile photo uploaded successfully!');
+      
+    } catch (error) {
+      console.error('Profile photo upload error:', error);
       Alert.alert('Error', `Failed to upload profile photo: ${error.message}`);
     } finally {
       setUploading(false);
@@ -300,10 +359,11 @@ export default function ResubmitVerificationScreen() {
           drivingLicenseFront: deliveryWork ? documents.drivingLicense.front : null,
           drivingLicenseBack: deliveryWork ? documents.drivingLicense.back : null
         },
-        verificationStatus: 'pending',
+        verificationStatus: 'pending', // This will change to pending when actually submitted
         isVerified: false,
         submittedAt: new Date().toISOString(),
-        createUser: false // This is resubmission, not new user creation
+        createUser: false, // This is resubmission, not new user creation
+        isResubmission: true // Flag to indicate this is a resubmission
       };
 
       console.log('Submitting resubmission data:', verificationData);

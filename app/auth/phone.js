@@ -102,8 +102,14 @@ export default function PhoneAuthScreen() {
             console.log('Parsed auth data:', authData);
             
             // Only proceed if we have valid authentication data
-            if (!authData.user || !authData.user.id) {
+            if (!authData.user) {
               console.log('Invalid authentication response, throwing error');
+              throw new Error('Invalid authentication response from server');
+            }
+            
+            // For new users (signup), the ID might be temporary
+            if (!authData.user.id && !authData.isNewUser) {
+              console.log('Invalid authentication response - no user ID and not a new user');
               throw new Error('Invalid authentication response from server');
             }
             
@@ -117,7 +123,7 @@ export default function PhoneAuthScreen() {
               uid: user.uid,
               phoneNumber: user.phoneNumber,
               role: role || 'client',
-              id: authData.user.id, // Backend user ID
+              id: authData.user.id || null, // Backend user ID (might be null for new users)
               isNewUser: authData.isNewUser,
               needsVerification: authData.needsVerification
             };

@@ -92,7 +92,42 @@ export default function FreelancerHomeScreen() {
     setRefreshing(true);
     await fetchJobs();
     await checkProfileCompletion();
+    await checkRejectionStatus(); // Add rejection status check
     setRefreshing(false);
+  };
+
+  const checkRejectionStatus = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@user_data');
+      if (!userData) return;
+      
+      const user = JSON.parse(userData);
+      const firebaseIdToken = await auth().currentUser?.getIdToken();
+      if (!firebaseIdToken) return;
+      
+      // Fetch latest user profile to check rejection status
+      const response = await fetch(`${API_BASE_URL}/users/${user.id || user._id}`, {
+        headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+      });
+      
+      if (response.ok) {
+        const profile = await response.json();
+        console.log('🔍 Refresh - User verification status:', profile.verificationStatus);
+        
+        if (profile.verificationStatus === 'rejected') {
+          console.log('❌ Refresh - User is rejected, showing rejection modal');
+          setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+          setShowRejectionModal(true);
+        } else if (profile.verificationStatus === 'rejected' && profile.resubmissionCount && profile.resubmissionCount > 0) {
+          // User has clicked resubmit but hasn't completed the process yet - show rejection reason
+          console.log('🔄 Refresh - User has clicked resubmit but status still rejected, showing rejection reason');
+          setRejectionReason(profile.adminComments || 'Your verification was rejected. Please review and resubmit your documents.');
+          setShowRejectionModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking rejection status:', error);
+    }
   };
 
   const checkProfileCompletion = async () => {
@@ -144,11 +179,20 @@ export default function FreelancerHomeScreen() {
       console.log('🔍 Checking rejection status for user:', user.id || user._id);
       console.log('🔍 User verification status:', profile.verificationStatus);
       console.log('🔍 User is rejected:', profile.verificationStatus === 'rejected');
+      console.log('🔍 User resubmission count:', profile.resubmissionCount);
+      console.log('🔍 User admin comments:', profile.adminComments);
       
       if (profile.verificationStatus === 'rejected') {
         console.log('❌ User is rejected, showing rejection modal');
         setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
         setShowRejectionModal(true);
+        return; // Exit early, don't check for pending verifications
+      } else if (profile.verificationStatus === 'rejected' && profile.resubmissionCount && profile.resubmissionCount > 0) {
+        // User has clicked resubmit but hasn't completed the process yet - show rejection reason
+        console.log('🔄 User has clicked resubmit but status still rejected, showing rejection reason');
+        setRejectionReason(profile.adminComments || 'Your verification was rejected. Please review and resubmit your documents.');
+        setShowRejectionModal(true);
+        return; // Exit early, don't check for pending verifications
       } else if (profile.verificationStatus === 'pending') {
         console.log('⏳ User status is pending, checking for verification entries...');
         

@@ -436,10 +436,13 @@ export default function ManualVerificationScreen() {
         verificationStatus: 'pending',
         isVerified: false,
         submittedAt: new Date().toISOString(),
-        createUser: !userId // Flag to indicate if we need to create a user
+        createUser: !userId || userId.startsWith('temp_') // Flag to indicate if we need to create a user
       };
 
-      console.log('Submitting verification data:', verificationData);
+      console.log('📤 Submitting verification data:', verificationData);
+      console.log('📤 userId from params:', userId);
+      console.log('📤 createUser flag:', !userId || userId.startsWith('temp_'));
+      console.log('📤 is temporary ID:', userId && userId.startsWith('temp_'));
 
       // Send verification data to backend
       const response = await fetch(`${API_BASE_URL}/verification/submit`, {
