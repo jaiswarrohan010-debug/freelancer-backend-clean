@@ -1287,7 +1287,10 @@
         }
         
         async function approveUserFromModal() {
-            if (!currentUserId) return;
+            if (!currentUserId && !currentVerificationId) {
+                alert('No user or verification selected');
+                return;
+            }
             
             if (!confirm('Are you sure you want to approve this verification?')) return;
             
@@ -1305,7 +1308,13 @@
                 let response;
                 if (isFromQueue) {
                     // This is a verification from the queue
-                    response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${currentVerificationId}/approve`, {
+                    const url = `https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${currentVerificationId}/approve`;
+                    console.log('🔍 Making API call to:', url);
+                    console.log('🔍 Request body:', JSON.stringify({
+                        adminComments: comments || undefined
+                    }));
+                    
+                    response = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1315,6 +1324,9 @@
                             adminComments: comments || undefined
                         })
                     });
+                    
+                    console.log('🔍 Response status:', response.status);
+                    console.log('🔍 Response ok:', response.ok);
                 } else {
                     // This is a regular user approval
                     response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/users/${currentUserId}/verification-status`, {
@@ -1355,7 +1367,10 @@
         }
         
         async function rejectUserFromModal() {
-            if (!currentUserId) return;
+            if (!currentUserId && !currentVerificationId) {
+                alert('No user or verification selected');
+                return;
+            }
             
             const comments = document.getElementById('adminComments').value;
             if (!comments) {
@@ -1377,7 +1392,13 @@
                 let response;
                 if (isFromQueue) {
                     // This is a verification from the queue
-                    response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${currentVerificationId}/reject`, {
+                    const url = `https://freelancer-backend-jv21.onrender.com/api/admin/verifications/${currentVerificationId}/reject`;
+                    console.log('🔍 Making reject API call to:', url);
+                    console.log('🔍 Reject request body:', JSON.stringify({
+                        adminComments: comments
+                    }));
+                    
+                    response = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1387,6 +1408,9 @@
                             adminComments: comments
                         })
                     });
+                    
+                    console.log('🔍 Reject response status:', response.status);
+                    console.log('🔍 Reject response ok:', response.ok);
                 } else {
                     // This is a regular user rejection
                     response = await fetch(`https://freelancer-backend-jv21.onrender.com/api/admin/users/${currentUserId}/verification-status`, {
