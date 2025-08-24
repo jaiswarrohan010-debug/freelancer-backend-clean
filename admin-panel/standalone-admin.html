@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Standalone Admin Panel - Updated</title>
+    <title>Standalone Admin Panel - Production v2.0</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -583,10 +586,11 @@
         </div>
     </div>
 
-    <script>
-        let adminToken = null;
-        let currentUserId = null;
-        let currentVerificationId = null;
+            <script>
+            // Production v2.0 - Admin Panel with Resubmission Support
+            let adminToken = null;
+            let currentUserId = null;
+            let currentVerificationId = null;
         
         // Check API status on page load
         window.addEventListener('load', () => {
@@ -792,14 +796,21 @@
                 }
                 
                 users.forEach((user, index) => {
-                    console.log(`👤 Processing user ${index + 1}:`, user.name || user.fullName || 'Unknown');
-                    const userName = user.name || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User';
+                    console.log(`👤 Processing user ${index + 1}:`, user.displayName || user.name || user.fullName || 'Unknown');
+                    console.log(`🔍 User ${index + 1} full data:`, user);
+                    
+                    // Temporary fallback: if displayName doesn't exist, use name
+                    const userName = user.displayName || user.name || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User';
+                    
+                    // Add a note if this is a resubmission
+                    const isResubmission = user.resubmissionCount && user.resubmissionCount > 0;
+                    const displayName = isResubmission ? `${userName} (Resubmitted)` : userName;
                     const userItem = document.createElement('div');
                     userItem.className = 'user-item';
                     
                     userItem.innerHTML = `
                         <div class="user-info">
-                            <h3>${userName}</h3>
+                            <h3>${displayName}</h3>
                             <p>${user.email || 'No email'} • ${user.phone || 'No phone'} • ID: ${user._id}</p>
                         </div>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -1041,8 +1052,7 @@
                 </div>
             `;
             
-            // Load documents
-            loadDocumentsInModal(verification.documents, verification.profileImage);
+            // Documents are loaded in loadUserDetailsInModal function
         }
         
         async function verifyUser(userId) {
@@ -1079,6 +1089,13 @@
             const userDetails = document.getElementById('userDetails');
             const documentsGrid = document.getElementById('documentsGrid');
             
+            // Prioritize verification data over user data for resubmissions
+            const displayName = verification?.name || user.name || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Not provided';
+            const displayDob = verification?.dateOfBirth || user.dob || user.dateOfBirth || 'Not provided';
+            const displayGender = verification?.gender || user.gender || 'Not provided';
+            const displayAddress = verification?.address || user.address || 'Not provided';
+            const displayPincode = verification?.pincode || user.pincode || 'Not provided';
+            
             // Load user details
             userDetails.innerHTML = `
                 <div class="user-details">
@@ -1086,7 +1103,7 @@
                         <h3>Personal Information</h3>
                         <div class="detail-item">
                             <div class="detail-label">Full Name</div>
-                            <div class="detail-value">${user.name || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Not provided'}</div>
+                            <div class="detail-value">${displayName}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Email</div>
@@ -1098,23 +1115,23 @@
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Date of Birth</div>
-                            <div class="detail-value">${user.dob || user.dateOfBirth || 'Not provided'}</div>
+                            <div class="detail-value">${displayDob}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Gender</div>
-                            <div class="detail-value">${user.gender || 'Not provided'}</div>
+                            <div class="detail-value">${displayGender}</div>
                         </div>
                     </div>
                     <div class="detail-section">
                         <h3>Address Information</h3>
                         <div class="detail-item">
                             <div class="detail-label">Address</div>
-                            <div class="detail-value">${user.address || 'Not provided'}</div>
+                            <div class="detail-value">${displayAddress}</div>
                         </div>
 
                         <div class="detail-item">
                             <div class="detail-label">Pincode</div>
-                            <div class="detail-value">${user.pincode || 'Not provided'}</div>
+                            <div class="detail-value">${displayPincode}</div>
                         </div>
                     </div>
                 </div>
