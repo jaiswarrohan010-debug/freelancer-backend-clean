@@ -189,13 +189,17 @@ export default function FreelancerHomeScreen() {
       console.log('🔍 User resubmission count:', profile.resubmissionCount);
       console.log('🔍 User admin comments:', profile.adminComments);
       
-      if (profile.verificationStatus === 'rejected') {
+      // Normalize verification status to handle whitespace and case issues
+      const normalizedStatus = profile.verificationStatus ? profile.verificationStatus.trim().toLowerCase() : '';
+      console.log('🔍 Normalized verification status:', `"${normalizedStatus}"`);
+      
+      if (normalizedStatus === 'rejected') {
         console.log('❌ User is rejected, showing rejection modal');
         setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
         setShowRejectionModal(true);
         setShowUnderReviewMessage(false);
         return; // Exit early, don't check for pending verifications
-      } else if (profile.verificationStatus === 'pending') {
+      } else if (normalizedStatus === 'pending') {
         console.log('⏳ User status is pending, showing "Under Review" message');
         setShowUnderReviewMessage(true);
         setShowRejectionModal(false);
@@ -203,10 +207,10 @@ export default function FreelancerHomeScreen() {
         return; // Exit early, don't check for pending verifications
       } else {
         console.log('🔍 Condition check failed:');
-        console.log('🔍 profile.verificationStatus === "pending":', profile.verificationStatus === 'pending');
-        console.log('🔍 profile.verificationStatus === "rejected":', profile.verificationStatus === 'rejected');
-        console.log('🔍 profile.verificationStatus value:', `"${profile.verificationStatus}"`);
-        console.log('🔍 profile.verificationStatus type:', typeof profile.verificationStatus);
+        console.log('🔍 Original verificationStatus:', `"${profile.verificationStatus}"`);
+        console.log('🔍 Normalized status:', `"${normalizedStatus}"`);
+        console.log('🔍 normalizedStatus === "pending":', normalizedStatus === 'pending');
+        console.log('🔍 normalizedStatus === "rejected":', normalizedStatus === 'rejected');
         console.log('✅ User status is not pending/rejected, no rejection modal');
         setShowRejectionModal(false);
         setRejectionReason('');
