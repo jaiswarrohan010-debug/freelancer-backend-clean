@@ -61,6 +61,7 @@ export default function ResubmitVerificationScreen() {
 
   const [dateError, setDateError] = useState('');
   const [pincodeError, setPincodeError] = useState('');
+  const [nameError, setNameError] = useState('');
 
   useEffect(() => {
     console.log('Resubmit verification page loaded for userId:', userId);
@@ -292,6 +293,13 @@ export default function ResubmitVerificationScreen() {
 
   const submitResubmission = async () => {
     try {
+      // Validate name has both first and last name
+      const nameParts = name.trim().split(' ').filter(part => part.length > 0);
+      if (nameParts.length < 2) {
+        setNameError('Please enter both first name and last name');
+        return;
+      }
+
       // Validate required fields
       if (!name || !dateOfBirth || !gender || !address || !pincode) {
         Alert.alert('Error', 'Please fill in all profile details');
@@ -584,12 +592,29 @@ export default function ResubmitVerificationScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Full Name *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, nameError && styles.inputError]}
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              setName(text);
+              // Clear error when user starts typing
+              if (text.length > 0) {
+                setNameError('');
+              }
+              
+              // Check if name contains both first and last name
+              const nameParts = text.trim().split(' ').filter(part => part.length > 0);
+              if (text.length > 0 && nameParts.length < 2) {
+                setNameError('Please enter both first name and last name');
+              } else {
+                setNameError('');
+              }
+            }}
             placeholder="Enter your full name"
             placeholderTextColor="#999"
           />
+          {nameError ? (
+            <Text style={styles.errorText}>{nameError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.inputGroup}>
