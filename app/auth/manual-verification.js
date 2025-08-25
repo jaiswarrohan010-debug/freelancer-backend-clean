@@ -526,10 +526,28 @@ export default function ManualVerificationScreen() {
         const userData = await AsyncStorage.getItem('@user_data');
         if (userData) {
           const user = JSON.parse(userData);
+          // Update with the new user ID from the response
+          user.id = responseData.user._id;
+          user._id = responseData.user._id;
           user.verificationStatus = 'pending';
           user.isRejected = false;
           await AsyncStorage.setItem('@user_data', JSON.stringify(user));
-          console.log('Updated local user data after verification completion');
+          console.log('Updated local user data after verification completion:', {
+            userId: user.id,
+            verificationStatus: user.verificationStatus
+          });
+        } else {
+          // If no user data exists, create new user data
+          const newUserData = {
+            id: responseData.user._id,
+            _id: responseData.user._id,
+            phoneNumber: phone,
+            role: 'freelancer',
+            verificationStatus: 'pending',
+            isRejected: false
+          };
+          await AsyncStorage.setItem('@user_data', JSON.stringify(newUserData));
+          console.log('Created new user data after verification completion:', newUserData);
         }
         
         Alert.alert(
