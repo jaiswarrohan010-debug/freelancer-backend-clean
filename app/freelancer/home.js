@@ -186,12 +186,34 @@ export default function FreelancerHomeScreen() {
         let profile = null;
         let lookupMethod = '';
         
-                // Method 1: Try MongoDB ID lookup (primary method - works in production)
-        if (user.id || user._id) {
+                // Method 1: Try phone number lookup first (most reliable after verification)
+        if (user.phoneNumber) {
+          try {
+            const apiUrl = `${API_BASE_URL}/users/by-phone/${user.phoneNumber}`;
+            console.log('🔍 Trying phone number lookup (primary):', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+              profile = await response.json();
+              lookupMethod = 'phone-number';
+              console.log('🔍 Successfully found user via phone number');
+            } else {
+              console.log('🔍 Phone number lookup failed:', response.status);
+            }
+          } catch (error) {
+            console.log('🔍 Phone number lookup error:', error.message);
+          }
+        }
+
+        // Method 2: Try MongoDB ID lookup (fallback)
+        if (!profile && (user.id || user._id)) {
           try {
             const userId = user.id || user._id;
             const apiUrl = `${API_BASE_URL}/users/${userId}`;
-            console.log('🔍 Trying MongoDB ID lookup (primary):', apiUrl);
+            console.log('🔍 Trying MongoDB ID lookup (fallback):', apiUrl);
             
             const response = await fetch(apiUrl, {
               headers: { 'Content-Type': 'application/json' }
@@ -233,27 +255,7 @@ export default function FreelancerHomeScreen() {
           }
         }
 
-        // Method 3: Try phone number lookup (fallback - not deployed yet)
-        if (!profile && user.phoneNumber) {
-          try {
-            const apiUrl = `${API_BASE_URL}/users/by-phone/${user.phoneNumber}`;
-            console.log('🔍 Trying phone number lookup (fallback):', apiUrl);
-            
-            const response = await fetch(apiUrl, {
-              headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (response.ok) {
-              profile = await response.json();
-              lookupMethod = 'phone-number';
-              console.log('🔍 Successfully found user via phone number');
-            } else {
-              console.log('🔍 Phone number lookup failed:', response.status, '- Backend route not deployed yet');
-            }
-          } catch (error) {
-            console.log('🔍 Phone number lookup error:', error.message);
-          }
-        }
+
         
         // Process the result
         if (profile) {
@@ -337,7 +339,8 @@ export default function FreelancerHomeScreen() {
             console.log('🔍 Local user data:', {
               verificationStatus: localUser.verificationStatus,
               needsVerification: localUser.needsVerification,
-              isNewUser: localUser.isNewUser
+              isNewUser: localUser.isNewUser,
+              phoneNumber: localUser.phoneNumber
             });
             
             // If user just completed verification (needsVerification = false, verificationStatus = 'pending')
@@ -346,6 +349,26 @@ export default function FreelancerHomeScreen() {
               setShowUnderReviewMessage(true);
               setVerificationStatus('pending');
               setIsVerified(false);
+              
+              // Try to refresh user data from backend using phone number
+              if (localUser.phoneNumber) {
+                console.log('🔍 Attempting to refresh user data using phone number:', localUser.phoneNumber);
+                try {
+                  const response = await fetch(`${API_BASE_URL}/users/by-phone/${localUser.phoneNumber}`);
+                  if (response.ok) {
+                    const freshUser = await response.json();
+                    console.log('🔍 Found fresh user data:', freshUser._id);
+                    
+                    // Update local storage with fresh user ID
+                    localUser.id = freshUser._id;
+                    localUser._id = freshUser._id;
+                    await AsyncStorage.setItem('@user_data', JSON.stringify(localUser));
+                    console.log('🔍 Updated local storage with fresh user ID');
+                  }
+                } catch (error) {
+                  console.log('🔍 Failed to refresh user data:', error.message);
+                }
+              }
             } else if (localUser.needsVerification && localUser.isNewUser) {
               console.log('🔍 User needs verification, redirecting to manual verification');
               router.replace(`/auth/manual-verification?userId=${localUser.id || localUser._id}&phone=${localUser.phoneNumber}&role=${localUser.role}`);
