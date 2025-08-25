@@ -33,6 +33,20 @@ export default function LoginScreen() {
     }
   };
 
+  // Debug function to check current user data
+  const debugUserData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@user_data');
+      const jwtToken = await AsyncStorage.getItem('@jwt_token');
+      console.log('🔍 Current AsyncStorage data:', {
+        userData: userData ? JSON.parse(userData) : null,
+        jwtToken: jwtToken ? 'Present' : 'Not present'
+      });
+    } catch (error) {
+      console.error('Error reading AsyncStorage:', error);
+    }
+  };
+
   const handleSendOtp = async () => {
     if (phoneNumber.length < 10) {
       Alert.alert('Error', 'Please enter a valid phone number');
@@ -250,6 +264,15 @@ export default function LoginScreen() {
           >
             <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
             <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+          
+          {/* Debug Button */}
+          <TouchableOpacity 
+            style={[styles.logoutButton, { top: 50 }]}
+            onPress={debugUserData}
+          >
+            <Ionicons name="bug-outline" size={20} color="#007AFF" />
+            <Text style={[styles.logoutButtonText, { color: '#007AFF' }]}>Debug</Text>
           </TouchableOpacity>
         </View>
 
