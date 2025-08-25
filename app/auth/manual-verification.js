@@ -129,8 +129,8 @@ export default function ManualVerificationScreen() {
         // Check if user data indicates rejection
         if (user.isRejected || user.verificationStatus === 'rejected') {
           console.log('User is rejected (from stored data), redirecting to dashboard');
-          router.replace('/freelancer/home');
-          return;
+                  router.replace('/freelancer/home?verificationSubmitted=true');
+        return;
         }
         
         // Fetch current user status from backend
@@ -141,7 +141,7 @@ export default function ManualVerificationScreen() {
           // If user is still rejected, redirect back to dashboard (which will show rejection modal)
           if (profile.verificationStatus === 'rejected') {
             console.log('User is still rejected (from backend), redirecting to dashboard');
-            router.replace('/freelancer/home');
+            router.replace('/freelancer/home?verificationSubmitted=true');
           }
         }
       }
