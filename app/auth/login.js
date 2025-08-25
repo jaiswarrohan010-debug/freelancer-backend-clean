@@ -47,6 +47,53 @@ export default function LoginScreen() {
     }
   };
 
+  // Force refresh user data from backend
+  const refreshUserData = async () => {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'No user logged in');
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          idToken: idToken,
+          role: 'freelancer',
+          action: 'login',
+        }),
+      });
+
+      if (response.ok) {
+        const authData = await response.json();
+        const freshUserData = {
+          uid: currentUser.uid,
+          phoneNumber: currentUser.phoneNumber,
+          role: authData.user.role,
+          id: authData.user.id,
+          isNewUser: authData.isNewUser,
+          needsVerification: authData.needsVerification,
+          verificationStatus: authData.verificationStatus,
+          isRejected: authData.isRejected
+        };
+        
+        console.log('🔍 Refreshed user data:', freshUserData);
+        await AsyncStorage.setItem('@user_data', JSON.stringify(freshUserData));
+        Alert.alert('Success', 'User data refreshed! Please restart the app.');
+      } else {
+        Alert.alert('Error', 'Failed to refresh user data');
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      Alert.alert('Error', 'Failed to refresh user data: ' + error.message);
+    }
+  };
+
   const handleSendOtp = async () => {
     if (phoneNumber.length < 10) {
       Alert.alert('Error', 'Please enter a valid phone number');
@@ -147,7 +194,8 @@ export default function LoginScreen() {
               verificationStatus: authData.verificationStatus,
               isRejected: authData.isRejected
             });
-            await AsyncStorage.setItem('@user_data', JSON.stringify({
+            // Store fresh user data from backend response
+            const freshUserData = {
               uid: user.uid,
               phoneNumber: user.phoneNumber,
               role: authData.user.role,
@@ -156,7 +204,10 @@ export default function LoginScreen() {
               needsVerification: authData.needsVerification,
               verificationStatus: authData.verificationStatus,
               isRejected: authData.isRejected
-            }));
+            };
+            
+            console.log('🔍 Storing fresh user data:', freshUserData);
+            await AsyncStorage.setItem('@user_data', JSON.stringify(freshUserData));
             await AsyncStorage.setItem('@jwt_token', authData.token);
             
             // Navigate based on user's role and verification status
@@ -273,6 +324,15 @@ export default function LoginScreen() {
           >
             <Ionicons name="bug-outline" size={20} color="#007AFF" />
             <Text style={[styles.logoutButtonText, { color: '#007AFF' }]}>Debug</Text>
+          </TouchableOpacity>
+          
+          {/* Refresh Data Button */}
+          <TouchableOpacity 
+            style={[styles.logoutButton, { top: 100 }]}
+            onPress={refreshUserData}
+          >
+            <Ionicons name="refresh-outline" size={20} color="#10B981" />
+            <Text style={[styles.logoutButtonText, { color: '#10B981' }]}>Refresh</Text>
           </TouchableOpacity>
         </View>
 
