@@ -477,6 +477,18 @@ export default function ManualVerificationScreen() {
         return;
       }
 
+      // Get Firebase UID if available
+      let firebaseUid = null;
+      try {
+        const firebaseUser = auth().currentUser;
+        if (firebaseUser) {
+          firebaseUid = firebaseUser.uid;
+          console.log('🔍 Firebase UID available:', firebaseUid);
+        }
+      } catch (error) {
+        console.log('🔍 No Firebase user available:', error.message);
+      }
+
       // Prepare verification data
       const verificationData = {
         firstName: name.split(' ')[0] || name,
@@ -499,7 +511,8 @@ export default function ManualVerificationScreen() {
         verificationStatus: 'pending',
         isVerified: false,
         submittedAt: new Date().toISOString(),
-        createUser: !userId || userId.startsWith('temp_') // Flag to indicate if we need to create a user
+        createUser: !userId || userId.startsWith('temp_'), // Flag to indicate if we need to create a user
+        firebaseUid: firebaseUid // Add Firebase UID if available
       };
 
       console.log('📤 Submitting verification data:', verificationData);
