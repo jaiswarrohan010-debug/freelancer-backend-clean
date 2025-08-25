@@ -483,7 +483,15 @@ export default function ManualVerificationScreen() {
         const firebaseUser = auth().currentUser;
         if (firebaseUser) {
           firebaseUid = firebaseUser.uid;
-          console.log('🔍 Firebase UID available:', firebaseUid);
+          console.log('🔍 Firebase UID from current user:', firebaseUid);
+        } else {
+          // Try to get Firebase UID from stored user data
+          const userData = await AsyncStorage.getItem('@user_data');
+          if (userData) {
+            const user = JSON.parse(userData);
+            firebaseUid = user.uid || user.firebaseUid;
+            console.log('🔍 Firebase UID from stored data:', firebaseUid);
+          }
         }
       } catch (error) {
         console.log('🔍 No Firebase user available:', error.message);
