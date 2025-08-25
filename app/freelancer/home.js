@@ -33,12 +33,20 @@ export default function FreelancerHomeScreen() {
   const loadCurrentUserId = async () => {
     try {
       const userData = await AsyncStorage.getItem('@user_data');
+      console.log('🔍 Raw user data from storage:', userData);
       if (userData) {
         const user = JSON.parse(userData);
-        setCurrentUserId(user.id || user._id);
+        const userId = user.id || user._id;
+        console.log('🔍 Parsed user data:', user);
+        console.log('🔍 Extracted user ID:', userId);
+        setCurrentUserId(userId);
+      } else {
+        console.log('🔍 No user data found in storage');
+        setCurrentUserId(null);
       }
     } catch (error) {
       console.error('Error loading current user:', error);
+      setCurrentUserId(null);
     }
   };
 
@@ -147,7 +155,13 @@ export default function FreelancerHomeScreen() {
         return;
       }
       const firebaseIdToken = await firebaseUser.getIdToken();
-      const response = await fetch(`${API_BASE_URL}/users/${user.id || user._id}`, {
+      const userId = user.id || user._id;
+      const apiUrl = `${API_BASE_URL}/users/${userId}`;
+      console.log('🔍 Making API call to:', apiUrl);
+      console.log('🔍 Using user ID:', userId);
+      console.log('🔍 User object:', user);
+      
+      const response = await fetch(apiUrl, {
         headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
       });
       if (!response.ok) {
