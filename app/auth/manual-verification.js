@@ -487,10 +487,14 @@ export default function ManualVerificationScreen() {
         } else {
           // Try to get Firebase UID from stored user data
           const userData = await AsyncStorage.getItem('@user_data');
+          console.log('🔍 Raw stored user data:', userData);
           if (userData) {
             const user = JSON.parse(userData);
+            console.log('🔍 Parsed stored user data:', user);
             firebaseUid = user.uid || user.firebaseUid;
             console.log('🔍 Firebase UID from stored data:', firebaseUid);
+          } else {
+            console.log('🔍 No stored user data found');
           }
         }
       } catch (error) {
