@@ -151,12 +151,15 @@ export default function FreelancerHomeScreen() {
         headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
       });
       if (!response.ok) {
+        console.log('🔍 Failed to fetch user profile:', response.status, response.statusText);
         setProfileComplete(false);
         setProfileChecked(true);
         return;
       }
       const profile = await response.json();
-      console.log('Profile data received:', profile);
+      console.log('🔍 Profile data received:', profile);
+      console.log('🔍 Profile verificationStatus:', profile.verificationStatus);
+      console.log('🔍 Profile isVerified:', profile.isVerified);
       console.log('🔍 Profile verification status:', profile.verificationStatus);
       console.log('🔍 Profile verification status (typeof):', typeof profile.verificationStatus);
       console.log('🔍 Profile verification status (length):', profile.verificationStatus ? profile.verificationStatus.length : 'null/undefined');
