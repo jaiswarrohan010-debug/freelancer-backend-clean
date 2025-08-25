@@ -40,6 +40,10 @@ export default function FreelancerHomeScreen() {
         console.log('🔍 Parsed user data:', user);
         console.log('🔍 Extracted user ID:', userId);
         setCurrentUserId(userId);
+        
+        // Don't show under review message based on stored data alone
+        // Wait for backend confirmation
+        console.log('🔍 User data loaded, waiting for backend confirmation');
       } else {
         console.log('🔍 No user data found in storage');
         setCurrentUserId(null);
@@ -115,8 +119,9 @@ export default function FreelancerHomeScreen() {
       const firebaseIdToken = await auth().currentUser?.getIdToken();
       if (!firebaseIdToken) return;
       
-      // Fetch latest user profile to check rejection status
-      const response = await fetch(`${API_BASE_URL}/users/${user.id || user._id}`, {
+      // Use Firebase UID instead of MongoDB ID
+      const firebaseUid = user.uid || auth().currentUser?.uid;
+      const response = await fetch(`${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`, {
         headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
       });
       
@@ -128,10 +133,21 @@ export default function FreelancerHomeScreen() {
           console.log('❌ Refresh - User is rejected, showing rejection modal');
           setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
           setShowRejectionModal(true);
-        } else if (profile.verificationStatus === 'pending' && profile.resubmissionCount && profile.resubmissionCount > 0) {
-          // User has completed resubmission and is now pending - show "Under Review" message
-          console.log('🔄 Refresh - User has completed resubmission and is now pending - showing under review message');
-          // Don't show rejection modal for completed resubmissions
+          setShowUnderReviewMessage(false);
+        } else if (profile.verificationStatus === 'pending') {
+          // User is pending verification - show "Under Review" message
+          console.log('🔄 Refresh - User is pending verification, showing under review message');
+          setShowUnderReviewMessage(true);
+          setShowRejectionModal(false);
+        } else if (!profile.isVerified && profile.verificationStatus) {
+          // User has some verification status but is not verified - show "Under Review" message
+          console.log('🔄 Refresh - User has verification status but not verified, showing under review message');
+          setShowUnderReviewMessage(true);
+          setShowRejectionModal(false);
+        } else {
+          // User is verified or has no verification status
+          setShowUnderReviewMessage(false);
+          setShowRejectionModal(false);
         }
       }
     } catch (error) {
@@ -154,11 +170,88 @@ export default function FreelancerHomeScreen() {
         setProfileChecked(true);
         return;
       }
+      
+      // Check if user needs verification first
+      if (user.needsVerification && user.isNewUser) {
+        console.log('🔍 User needs verification, redirecting to manual verification form');
+        router.replace(`/auth/manual-verification?userId=${user.id || user._id}&phone=${user.phoneNumber}&role=${user.role}`);
+        return;
+      }
+      
+      // If user has submitted verification, check backend for latest status
+      if (user.verificationStatus === 'pending' && !user.needsVerification) {
+        console.log('🔍 User has submitted verification, checking backend for latest status');
+        
+        // Fetch latest status from backend
+        const firebaseUid = user.uid || firebaseUser.uid;
+        const apiUrl = `${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`;
+        
+        try {
+          const response = await fetch(apiUrl, {
+            headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+          });
+          
+          if (response.ok) {
+            const profile = await response.json();
+            console.log('🔍 Backend profile status:', {
+              verificationStatus: profile.verificationStatus,
+              isVerified: profile.isVerified
+            });
+            
+            if (profile.verificationStatus === 'pending' && !profile.isVerified) {
+              console.log('🔍 Backend confirms pending status, showing under review message');
+              setShowUnderReviewMessage(true);
+              setVerificationStatus('pending');
+              setIsVerified(false);
+            } else if (profile.isVerified === true) {
+              console.log('🔍 Backend confirms user is verified, hiding under review message');
+              setShowUnderReviewMessage(false);
+              setVerificationStatus(profile.verificationStatus);
+              setIsVerified(true);
+              
+              // Update local storage to reflect verified status
+              try {
+                const userData = await AsyncStorage.getItem('@user_data');
+                if (userData) {
+                  const user = JSON.parse(userData);
+                  user.verificationStatus = profile.verificationStatus;
+                  user.isVerified = true;
+                  await AsyncStorage.setItem('@user_data', JSON.stringify(user));
+                  console.log('🔍 Updated local storage with verified status');
+                }
+              } catch (error) {
+                console.error('🔍 Error updating local storage:', error);
+              }
+            } else {
+              console.log('🔍 Backend status unclear, showing under review message');
+              setShowUnderReviewMessage(true);
+              setVerificationStatus(profile.verificationStatus);
+              setIsVerified(profile.isVerified);
+            }
+          } else {
+            console.log('🔍 Failed to fetch backend status, showing under review message based on local data');
+            setShowUnderReviewMessage(true);
+            setVerificationStatus('pending');
+            setIsVerified(false);
+          }
+        } catch (error) {
+          console.error('🔍 Error fetching backend status:', error);
+          setShowUnderReviewMessage(true);
+          setVerificationStatus('pending');
+          setIsVerified(false);
+        }
+        
+        setProfileChecked(true);
+        return;
+      }
+      
       const firebaseIdToken = await firebaseUser.getIdToken();
-      const userId = user.id || user._id;
-      const apiUrl = `${API_BASE_URL}/users/${userId}`;
+      
+      // Use Firebase UID instead of MongoDB ID
+      const firebaseUid = user.uid || firebaseUser.uid;
+      const apiUrl = `${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`;
       console.log('🔍 Making API call to:', apiUrl);
-      console.log('🔍 Using user ID:', userId);
+      console.log('🔍 Using Firebase UID:', firebaseUid);
       console.log('🔍 User object:', user);
       
       const response = await fetch(apiUrl, {
@@ -166,6 +259,12 @@ export default function FreelancerHomeScreen() {
       });
       if (!response.ok) {
         console.log('🔍 Failed to fetch user profile:', response.status, response.statusText);
+        // If user profile doesn't exist and they need verification, redirect them
+        if (response.status === 404 && user.needsVerification) {
+          console.log('🔍 User profile not found and needs verification, redirecting to manual verification');
+          router.replace(`/auth/manual-verification?userId=${user.id || user._id}&phone=${user.phoneNumber}&role=${user.role}`);
+          return;
+        }
         setProfileComplete(false);
         setProfileChecked(true);
         return;
@@ -194,10 +293,19 @@ export default function FreelancerHomeScreen() {
       const isComplete = isProfileComplete && profile.isVerified === true;
       
       // Set verification status
+      console.log('🔍 Setting verification states:');
+      console.log('🔍 profile.isVerified:', profile.isVerified);
+      console.log('🔍 profile.verificationStatus:', profile.verificationStatus);
+      console.log('🔍 profile.freelancerId:', profile.freelancerId);
+      
       setIsVerified(profile.isVerified === true);
       setVerificationStatus(profile.verificationStatus || 'pending');
       setFreelancerId(profile.freelancerId || '');
       setHasBasicProfile(isProfileComplete);
+      
+      console.log('🔍 States after setting:');
+      console.log('🔍 isVerified will be:', profile.isVerified === true);
+      console.log('🔍 verificationStatus will be:', profile.verificationStatus || 'pending');
       
       // Handle rejection status
       console.log('🔍 Checking rejection status for user:', user.id || user._id);
@@ -210,25 +318,33 @@ export default function FreelancerHomeScreen() {
       const normalizedStatus = profile.verificationStatus ? profile.verificationStatus.trim().toLowerCase() : '';
       console.log('🔍 Normalized verification status:', `"${normalizedStatus}"`);
       
+      // Check for rejected status first
       if (normalizedStatus === 'rejected') {
         console.log('❌ User is rejected, showing rejection modal');
         setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
         setShowRejectionModal(true);
         setShowUnderReviewMessage(false);
         return; // Exit early, don't check for pending verifications
-      } else if (normalizedStatus === 'pending') {
+      } 
+      
+      // Check for pending status (including resubmissions)
+      if (normalizedStatus === 'pending' || (!profile.isVerified && profile.verificationStatus)) {
         console.log('⏳ User status is pending, showing "Under Review" message');
+        console.log('⏳ Setting showUnderReviewMessage to true');
         setShowUnderReviewMessage(true);
         setShowRejectionModal(false);
         setRejectionReason('');
         return; // Exit early, don't check for pending verifications
+      } 
+      
+      // If user is verified, don't show any status messages
+      if (profile.isVerified === true) {
+        console.log('✅ User is verified, no status messages needed');
+        setShowRejectionModal(false);
+        setRejectionReason('');
+        setShowUnderReviewMessage(false);
       } else {
-        console.log('🔍 Condition check failed:');
-        console.log('🔍 Original verificationStatus:', `"${profile.verificationStatus}"`);
-        console.log('🔍 Normalized status:', `"${normalizedStatus}"`);
-        console.log('🔍 normalizedStatus === "pending":', normalizedStatus === 'pending');
-        console.log('🔍 normalizedStatus === "rejected":', normalizedStatus === 'rejected');
-        console.log('✅ User status is not pending/rejected, no rejection modal');
+        console.log('🔍 User status unclear, no status messages');
         setShowRejectionModal(false);
         setRejectionReason('');
         setShowUnderReviewMessage(false);
@@ -316,6 +432,51 @@ export default function FreelancerHomeScreen() {
     loadCurrentUserId();
     fetchJobs();
     checkProfileCompletion();
+    
+    // Additional check for under review status after a short delay
+    const timer = setTimeout(() => {
+      checkProfileCompletion();
+    }, 1000);
+    
+    // Fallback: Only show "Under Review" if we have confirmation from the backend
+    const fallbackTimer = setTimeout(async () => {
+      try {
+        const userData = await AsyncStorage.getItem('@user_data');
+        if (userData) {
+          const user = JSON.parse(userData);
+          const firebaseUser = auth().currentUser;
+          if (firebaseUser) {
+            const firebaseUid = user.uid || firebaseUser.uid;
+            const firebaseIdToken = await firebaseUser.getIdToken();
+            
+            // Try to fetch user profile one more time
+            const response = await fetch(`${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`, {
+              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+            });
+            
+            if (response.ok) {
+              const profile = await response.json();
+              if (profile.verificationStatus === 'pending' && !profile.isVerified) {
+                console.log('🔍 Fallback: Setting showUnderReviewMessage to true based on backend data');
+                setShowUnderReviewMessage(true);
+              }
+            } else {
+              console.log('🔍 Fallback: User profile not found in database, not showing under review message');
+              setShowUnderReviewMessage(false);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Fallback check error:', error);
+        // Don't show under review message if we can't verify the status
+        setShowUnderReviewMessage(false);
+      }
+    }, 2000);
+    
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   // Add focus effect to refresh data when screen comes into focus
@@ -323,6 +484,118 @@ export default function FreelancerHomeScreen() {
     useCallback(() => {
       // Refresh profile data when screen comes into focus
       checkProfileCompletion();
+      
+      // Check user verification status from backend
+      const checkStoredData = async () => {
+        try {
+          const userData = await AsyncStorage.getItem('@user_data');
+          if (userData) {
+            const user = JSON.parse(userData);
+            
+            // Check if user needs verification first
+            if (user.needsVerification && user.isNewUser) {
+              console.log('🔍 Focus effect: User needs verification, redirecting to manual verification form');
+              router.replace(`/auth/manual-verification?userId=${user.id || user._id}&phone=${user.phoneNumber}&role=${user.role}`);
+              return;
+            }
+            
+            // If user has submitted verification, check backend for latest status
+            if (user.verificationStatus === 'pending' && !user.needsVerification) {
+              console.log('🔍 Focus effect: User has submitted verification, checking backend for latest status');
+              
+              const firebaseUser = auth().currentUser;
+              if (firebaseUser) {
+                const firebaseUid = user.uid || firebaseUser.uid;
+                const firebaseIdToken = await firebaseUser.getIdToken();
+                const apiUrl = `${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`;
+                
+                try {
+                  const response = await fetch(apiUrl, {
+                    headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+                  });
+                  
+                  if (response.ok) {
+                    const profile = await response.json();
+                    console.log('🔍 Focus effect - Backend profile status:', {
+                      verificationStatus: profile.verificationStatus,
+                      isVerified: profile.isVerified
+                    });
+                    
+                    if (profile.verificationStatus === 'pending' && !profile.isVerified) {
+                      console.log('🔍 Focus effect - Backend confirms pending status, showing under review message');
+                      setShowUnderReviewMessage(true);
+                      setVerificationStatus('pending');
+                      setIsVerified(false);
+                    } else if (profile.isVerified === true) {
+                      console.log('🔍 Focus effect - Backend confirms user is verified, hiding under review message');
+                      setShowUnderReviewMessage(false);
+                      setVerificationStatus(profile.verificationStatus);
+                      setIsVerified(true);
+                      
+                      // Update local storage to reflect verified status
+                      try {
+                        const userData = await AsyncStorage.getItem('@user_data');
+                        if (userData) {
+                          const user = JSON.parse(userData);
+                          user.verificationStatus = profile.verificationStatus;
+                          user.isVerified = true;
+                          await AsyncStorage.setItem('@user_data', JSON.stringify(user));
+                          console.log('🔍 Focus effect - Updated local storage with verified status');
+                        }
+                      } catch (error) {
+                        console.error('🔍 Focus effect - Error updating local storage:', error);
+                      }
+                    } else {
+                      console.log('🔍 Focus effect - Backend status unclear, showing under review message');
+                      setShowUnderReviewMessage(true);
+                      setVerificationStatus(profile.verificationStatus);
+                      setIsVerified(profile.isVerified);
+                    }
+                  } else {
+                    console.log('🔍 Focus effect - Failed to fetch backend status, showing under review message based on local data');
+                    setShowUnderReviewMessage(true);
+                    setVerificationStatus('pending');
+                    setIsVerified(false);
+                  }
+                } catch (error) {
+                  console.error('🔍 Focus effect - Error fetching backend status:', error);
+                  setShowUnderReviewMessage(true);
+                  setVerificationStatus('pending');
+                  setIsVerified(false);
+                }
+              }
+              
+              setProfileChecked(true);
+              return;
+            }
+            
+            const firebaseUser = auth().currentUser;
+            if (firebaseUser) {
+              const firebaseUid = user.uid || firebaseUser.uid;
+              const firebaseIdToken = await firebaseUser.getIdToken();
+              
+              const response = await fetch(`${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`, {
+                headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+              });
+              
+              if (response.ok) {
+                const profile = await response.json();
+                if (profile.verificationStatus === 'pending' && !profile.isVerified) {
+                  console.log('🔍 Focus effect: User has pending verification, showing under review message');
+                  setShowUnderReviewMessage(true);
+                }
+              } else if (response.status === 404 && user.needsVerification) {
+                console.log('🔍 Focus effect: User profile not found and needs verification, redirecting to manual verification');
+                router.replace(`/auth/manual-verification?userId=${user.id || user._id}&phone=${user.phoneNumber}&role=${user.role}`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking stored data in focus effect:', error);
+        }
+      };
+      
+      checkStoredData();
     }, [])
   );
 
@@ -362,6 +635,14 @@ export default function FreelancerHomeScreen() {
 
     return () => clearInterval(interval);
   }, [currentUserId]);
+
+  // Debug useEffect to monitor state changes
+  useEffect(() => {
+    console.log('🔍 State changed - showUnderReviewMessage:', showUnderReviewMessage);
+    console.log('🔍 State changed - verificationStatus:', verificationStatus);
+    console.log('🔍 State changed - isVerified:', isVerified);
+    console.log('🔍 State changed - profileChecked:', profileChecked);
+  }, [showUnderReviewMessage, verificationStatus, isVerified, profileChecked]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -465,7 +746,7 @@ export default function FreelancerHomeScreen() {
         </View>
       )}
       
-      {/* Debug Info */}
+      {/* Debug Info (Temporary) */}
       <View style={{
         backgroundColor: '#f0f0f0',
         padding: 8,
@@ -473,12 +754,12 @@ export default function FreelancerHomeScreen() {
         marginTop: 8,
       }}>
         <Text style={{ fontSize: 12, color: '#666' }}>
-          Debug: showUnderReviewMessage={showUnderReviewMessage.toString()}, 
-          verificationStatus={verificationStatus}, 
-          isVerified={isVerified.toString()}
+          Status: {showUnderReviewMessage ? 'Under Review' : 'Not Under Review'} | 
+          Verification: {verificationStatus} | 
+          Verified: {isVerified ? 'Yes' : 'No'}
         </Text>
       </View>
-
+      
       {/* Verified but Profile Incomplete Alert */}
       {profileChecked && isVerified && !profileComplete && (
         <View style={{

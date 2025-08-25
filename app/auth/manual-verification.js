@@ -477,6 +477,17 @@ export default function ManualVerificationScreen() {
         return;
       }
 
+      // Get Firebase UID if available
+      let firebaseUid = null;
+      try {
+        const firebaseUser = auth().currentUser;
+        if (firebaseUser) {
+          firebaseUid = firebaseUser.uid;
+        }
+      } catch (error) {
+        console.log('Could not get Firebase UID:', error);
+      }
+
       // Prepare verification data
       const verificationData = {
         firstName: name.split(' ')[0] || name,
@@ -499,7 +510,8 @@ export default function ManualVerificationScreen() {
         verificationStatus: 'pending',
         isVerified: false,
         submittedAt: new Date().toISOString(),
-        createUser: !userId || userId.startsWith('temp_') // Flag to indicate if we need to create a user
+        createUser: !userId || userId.startsWith('temp_'), // Flag to indicate if we need to create a user
+        firebaseUid: firebaseUid // Add Firebase UID
       };
 
       console.log('📤 Submitting verification data:', verificationData);
@@ -526,15 +538,23 @@ export default function ManualVerificationScreen() {
         const userData = await AsyncStorage.getItem('@user_data');
         if (userData) {
           const user = JSON.parse(userData);
-          // Update with the new user ID from the response
+          // Update with the new user ID from the response and mark verification as submitted
           user.id = responseData.user._id;
           user._id = responseData.user._id;
           user.verificationStatus = 'pending';
           user.isRejected = false;
+          user.needsVerification = false; // Mark as verification submitted
+          user.isNewUser = false; // Mark as not new user anymore
+          // Keep the existing Firebase UID
+          if (!user.uid && firebaseUid) {
+            user.uid = firebaseUid;
+          }
           await AsyncStorage.setItem('@user_data', JSON.stringify(user));
           console.log('Updated local user data after verification completion:', {
             userId: user.id,
-            verificationStatus: user.verificationStatus
+            verificationStatus: user.verificationStatus,
+            needsVerification: user.needsVerification,
+            isNewUser: user.isNewUser
           });
         } else {
           // If no user data exists, create new user data
@@ -544,7 +564,9 @@ export default function ManualVerificationScreen() {
             phoneNumber: phone,
             role: 'freelancer',
             verificationStatus: 'pending',
-            isRejected: false
+            isRejected: false,
+            needsVerification: false, // Mark as verification submitted
+            isNewUser: false // Mark as not new user anymore
           };
           await AsyncStorage.setItem('@user_data', JSON.stringify(newUserData));
           console.log('Created new user data after verification completion:', newUserData);
