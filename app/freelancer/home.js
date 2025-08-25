@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DrawerMenu from '../components/DrawerMenu';
@@ -11,7 +11,8 @@ import { API_BASE_URL } from '../utils/api';
 
 export default function FreelancerHomeScreen() {
   const router = useRouter();
-  const { verificationSubmitted } = useLocalSearchParams();
+  const searchParams = useSearchParams();
+  const verificationSubmitted = searchParams.verificationSubmitted;
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const { colors } = useTheme();
   const [availableJobs, setAvailableJobs] = useState([]);
