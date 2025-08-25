@@ -186,7 +186,7 @@ export default function FreelancerHomeScreen() {
         let profile = null;
         let lookupMethod = '';
         
-        // Method 1: Try Firebase UID lookup
+        // Method 1: Try Firebase UID lookup (temporarily disabled due to backend deployment issue)
         const firebaseUid = user.uid || firebaseUser.uid;
         if (firebaseUid) {
           try {
@@ -203,22 +203,21 @@ export default function FreelancerHomeScreen() {
               lookupMethod = 'firebase-uid';
               console.log('🔍 Successfully found user via Firebase UID');
             } else {
-              console.log('🔍 Firebase UID lookup failed:', response.status);
+              console.log('🔍 Firebase UID lookup failed:', response.status, '- Backend route not deployed yet');
             }
           } catch (error) {
             console.log('🔍 Firebase UID lookup error:', error.message);
           }
         }
         
-        // Method 2: Try phone number lookup (fallback)
+        // Method 2: Try phone number lookup (fallback - no auth required)
         if (!profile && user.phoneNumber) {
           try {
-            const firebaseIdToken = await firebaseUser.getIdToken();
             const apiUrl = `${API_BASE_URL}/users/by-phone/${user.phoneNumber}`;
             console.log('🔍 Trying phone number lookup:', apiUrl);
             
             const response = await fetch(apiUrl, {
-              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+              headers: { 'Content-Type': 'application/json' }
             });
             
             if (response.ok) {
@@ -233,16 +232,15 @@ export default function FreelancerHomeScreen() {
           }
         }
         
-        // Method 3: Try MongoDB ID lookup (final fallback)
+        // Method 3: Try MongoDB ID lookup (final fallback - no auth required)
         if (!profile && (user.id || user._id)) {
           try {
-            const firebaseIdToken = await firebaseUser.getIdToken();
             const userId = user.id || user._id;
             const apiUrl = `${API_BASE_URL}/users/${userId}`;
             console.log('🔍 Trying MongoDB ID lookup:', apiUrl);
             
             const response = await fetch(apiUrl, {
-              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+              headers: { 'Content-Type': 'application/json' }
             });
             
             if (response.ok) {
