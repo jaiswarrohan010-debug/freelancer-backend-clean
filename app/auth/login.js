@@ -11,6 +11,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { role } = useLocalSearchParams();
   const selectedRole = role || 'client';
+  const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationId, setVerificationId] = useState(null);
   const [otp, setOtp] = useState('');
@@ -102,7 +103,7 @@ export default function LoginScreen() {
     setLoading(true);
     setVerifying(false);
     try {
-      const formattedPhone = Platform.OS === 'android' ? `+91${phoneNumber}` : phoneNumber;
+      const formattedPhone = `${countryCode}${phoneNumber}`;
       const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
       setVerificationId(confirmation.verificationId);
       Alert.alert('Success', 'OTP sent successfully!');
@@ -357,6 +358,16 @@ export default function LoginScreen() {
               <View style={styles.inputIcon}>
                 <Ionicons name="call" size={20} color="#007AFF" />
               </View>
+              <TouchableOpacity 
+                style={styles.countryCodeContainer}
+                onPress={() => {
+                  // You can add a country picker modal here
+                  Alert.alert('Country Code', 'Currently only +91 (India) is supported');
+                }}
+              >
+                <Text style={styles.countryCodeText}>{countryCode}</Text>
+                <Ionicons name="chevron-down" size={16} color="#007AFF" />
+              </TouchableOpacity>
               <TextInput
                 style={styles.input}
                 placeholder="Enter your phone number"
@@ -384,7 +395,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <Text style={styles.helpText}>
-              We'll send a verification code to your phone number
+              We'll send a verification code to {countryCode} {phoneNumber}
             </Text>
           </View>
         ) : (
@@ -588,6 +599,21 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 12,
+  },
+  countryCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#e9ecef',
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginRight: 4,
   },
   input: {
     flex: 1,
