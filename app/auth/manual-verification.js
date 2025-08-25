@@ -637,32 +637,24 @@ export default function ManualVerificationScreen() {
               }
             }
             
-            if (profile) {
-              userFound = true;
-              console.log('✅ User record confirmed in database');
-              setLoadingMessage('Submission verified successfully!');
-              
-              // Wait a moment to show success message
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              
-              Alert.alert(
-                'Verification Submitted!',
-                'Your profile has been submitted for admin approval. You will be notified once approved.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => router.replace('/freelancer/home')
-                  }
-                ]
-              );
-              break;
-            } else {
-              console.log(`❌ User not found in database (attempt ${attempts})`);
-              if (attempts < maxAttempts) {
-                // Wait before next attempt
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
-            }
+                    if (profile) {
+          userFound = true;
+          console.log('✅ User record confirmed in database');
+          setLoadingMessage('Verification submitted successfully!');
+          
+          // Wait a moment to show success message
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Redirect to dashboard with spinner still active
+          router.replace('/freelancer/home?verificationSubmitted=true');
+          break;
+        } else {
+          console.log(`❌ User not found in database (attempt ${attempts})`);
+          if (attempts < maxAttempts) {
+            // Wait before next attempt
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
           } catch (error) {
             console.error('Error checking user record:', error);
             if (attempts < maxAttempts) {
@@ -673,21 +665,13 @@ export default function ManualVerificationScreen() {
         
         if (!userFound) {
           console.log('⚠️ User record not found after multiple attempts, but proceeding anyway');
-          setLoadingMessage('Submission completed!');
+          setLoadingMessage('Verification submitted successfully!');
           
           // Wait a moment to show completion message
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          Alert.alert(
-            'Verification Submitted!',
-            'Your profile has been submitted for admin approval. You will be notified once approved.',
-            [
-              {
-                text: 'OK',
-                onPress: () => router.replace('/freelancer/home')
-              }
-            ]
-          );
+          // Redirect to dashboard with spinner still active
+          router.replace('/freelancer/home?verificationSubmitted=true');
         }
       } else {
         const errorText = await response.text();

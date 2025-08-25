@@ -11,6 +11,7 @@ import { API_BASE_URL } from '../utils/api';
 
 export default function FreelancerHomeScreen() {
   const router = useRouter();
+  const { verificationSubmitted } = useLocalSearchParams();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const { colors } = useTheme();
   const [availableJobs, setAvailableJobs] = useState([]);
@@ -29,6 +30,8 @@ export default function FreelancerHomeScreen() {
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [showUnderReviewMessage, setShowUnderReviewMessage] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(verificationSubmitted === 'true');
+  const [verificationLoadingMessage, setVerificationLoadingMessage] = useState('Loading your profile...');
 
   const loadCurrentUserId = async () => {
     try {
@@ -157,6 +160,11 @@ export default function FreelancerHomeScreen() {
 
   const checkProfileCompletion = async (retryCount = 0) => {
     try {
+      // Update loading message if verification loading is active
+      if (verificationLoading) {
+        setVerificationLoadingMessage(`Checking your profile... (Attempt ${retryCount + 1})`);
+      }
+      
       const userData = await AsyncStorage.getItem('@user_data');
       if (!userData) {
         setProfileComplete(false);
@@ -264,6 +272,9 @@ export default function FreelancerHomeScreen() {
             isVerified: profile.isVerified
           });
           
+          // Hide verification loading spinner since we found the profile
+          setVerificationLoading(false);
+          
           // Check if profile is complete (all required fields filled)
           const isProfileComplete = Boolean(
             profile.name && typeof profile.name === 'string' && profile.name.trim() &&
@@ -349,6 +360,9 @@ export default function FreelancerHomeScreen() {
               setShowUnderReviewMessage(true);
               setVerificationStatus('pending');
               setIsVerified(false);
+              
+              // Hide verification loading spinner since we're showing the status
+              setVerificationLoading(false);
               
               // Try to refresh user data from backend using phone number
               if (localUser.phoneNumber) {
@@ -761,6 +775,21 @@ export default function FreelancerHomeScreen() {
         </View>
       </Modal>
 
+      {/* Verification Loading Modal */}
+      <Modal
+        visible={verificationLoading}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent closing with back button
+      >
+        <View style={styles.verificationLoadingOverlay}>
+          <View style={styles.verificationLoadingContent}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.verificationLoadingMessage}>{verificationLoadingMessage}</Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* Verification Status Alert */}
       {showUnderReviewMessage && (
         <View style={{
@@ -1037,5 +1066,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // Verification Loading Modal Styles
+  verificationLoadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verificationLoadingContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    margin: 20,
+    alignItems: 'center',
+    maxWidth: 300,
+    width: '90%',
+  },
+  verificationLoadingMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 20,
+    fontWeight: '500',
   },
 }); 
