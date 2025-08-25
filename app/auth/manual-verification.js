@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import auth from '@react-native-firebase/auth';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +23,7 @@ export default function ManualVerificationScreen() {
   const { userId, phone, role } = useLocalSearchParams();
   
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   
   // Profile details
@@ -447,6 +449,7 @@ export default function ManualVerificationScreen() {
       }
 
       setLoading(true);
+      setLoadingMessage('Submitting for verification...');
 
       // Get user phone number from stored user data or URL params
       let userPhone = null;
@@ -572,16 +575,120 @@ export default function ManualVerificationScreen() {
           console.log('Created new user data after verification completion:', newUserData);
         }
         
-        Alert.alert(
-          'Verification Submitted!',
-          'Your profile has been submitted for admin approval. You will be notified once approved.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/freelancer/home')
+        // Now check if user record was created successfully
+        setLoadingMessage('Verifying submission...');
+        
+        // Wait a moment for database to update
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Try to find the user record to confirm it was created
+        let userFound = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (!userFound && attempts < maxAttempts) {
+          attempts++;
+          setLoadingMessage(`Verifying submission... (Attempt ${attempts}/${maxAttempts})`);
+          
+          try {
+            // Try multiple lookup methods
+            const firebaseUid = responseData.user.firebaseUid || (await auth().currentUser?.uid);
+            const userPhone = responseData.user.phone;
+            const userId = responseData.user._id;
+            
+            let profile = null;
+            
+            // Method 1: Try Firebase UID lookup
+            if (firebaseUid) {
+              try {
+                const response = await fetch(`${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`);
+                if (response.ok) {
+                  profile = await response.json();
+                  console.log('✅ User found via Firebase UID');
+                }
+              } catch (error) {
+                console.log('Firebase UID lookup failed:', error.message);
+              }
             }
-          ]
-        );
+            
+            // Method 2: Try phone number lookup
+            if (!profile && userPhone) {
+              try {
+                const response = await fetch(`${API_BASE_URL}/users/by-phone/${userPhone}`);
+                if (response.ok) {
+                  profile = await response.json();
+                  console.log('✅ User found via phone number');
+                }
+              } catch (error) {
+                console.log('Phone lookup failed:', error.message);
+              }
+            }
+            
+            // Method 3: Try MongoDB ID lookup
+            if (!profile && userId) {
+              try {
+                const response = await fetch(`${API_BASE_URL}/users/${userId}`);
+                if (response.ok) {
+                  profile = await response.json();
+                  console.log('✅ User found via MongoDB ID');
+                }
+              } catch (error) {
+                console.log('MongoDB ID lookup failed:', error.message);
+              }
+            }
+            
+            if (profile) {
+              userFound = true;
+              console.log('✅ User record confirmed in database');
+              setLoadingMessage('Submission verified successfully!');
+              
+              // Wait a moment to show success message
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              Alert.alert(
+                'Verification Submitted!',
+                'Your profile has been submitted for admin approval. You will be notified once approved.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => router.replace('/freelancer/home')
+                  }
+                ]
+              );
+              break;
+            } else {
+              console.log(`❌ User not found in database (attempt ${attempts})`);
+              if (attempts < maxAttempts) {
+                // Wait before next attempt
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
+          } catch (error) {
+            console.error('Error checking user record:', error);
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
+        
+        if (!userFound) {
+          console.log('⚠️ User record not found after multiple attempts, but proceeding anyway');
+          setLoadingMessage('Submission completed!');
+          
+          // Wait a moment to show completion message
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          Alert.alert(
+            'Verification Submitted!',
+            'Your profile has been submitted for admin approval. You will be notified once approved.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/freelancer/home')
+              }
+            ]
+          );
+        }
       } else {
         const errorText = await response.text();
         console.log('Failed to submit verification:', response.status, errorText);
@@ -808,13 +915,9 @@ export default function ManualVerificationScreen() {
           onPress={submitVerification}
           disabled={loading || uploading}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>
-              {isResubmitting ? 'Re-Submit for Verification' : 'Submit for Verification'}
-            </Text>
-          )}
+          <Text style={styles.submitButtonText}>
+            {isResubmitting ? 'Re-Submit for Verification' : 'Submit for Verification'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -847,6 +950,20 @@ export default function ManualVerificationScreen() {
             >
               <Text style={styles.modalButtonText}>Cancel</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loading Modal */}
+      <Modal
+        visible={loading}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.loadingModalOverlay}>
+          <View style={styles.loadingModalContent}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingMessage}>{loadingMessage}</Text>
           </View>
         </View>
       </Modal>
@@ -1107,5 +1224,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
     marginLeft: 5,
+  },
+  loadingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 30,
+    alignItems: 'center',
+    minWidth: 250,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loadingMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 15,
+    fontWeight: '500',
   },
 });
