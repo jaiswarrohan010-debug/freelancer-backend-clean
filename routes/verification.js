@@ -148,6 +148,12 @@ router.post('/submit', async (req, res) => {
         let user = await User.findOne({ phone: phone });
         console.log('🔍 Looking for user with phone:', phone);
         console.log('🔍 User found:', user ? user._id : 'No user found');
+        console.log('🔍 User details if found:', user ? {
+            _id: user._id,
+            phone: user.phone,
+            verificationStatus: user.verificationStatus,
+            isVerified: user.isVerified
+        } : 'No user');
         console.log('🔍 createUser flag:', req.body.createUser);
         
         if (!user) {
@@ -175,6 +181,12 @@ router.post('/submit', async (req, res) => {
                 user = new User(userData);
                 await user.save();
                 console.log('✅ Created new user:', user._id);
+                console.log('✅ New user details:', {
+                    _id: user._id,
+                    phone: user.phone,
+                    verificationStatus: user.verificationStatus,
+                    isVerified: user.isVerified
+                });
             } else {
                 return res.status(404).json({
                     success: false,
