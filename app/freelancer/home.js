@@ -182,60 +182,121 @@ export default function FreelancerHomeScreen() {
       if (user.verificationStatus === 'pending' && !user.needsVerification) {
         console.log('🔍 User has submitted verification, checking backend for latest status');
         
-        // Fetch latest status from backend
-        const firebaseUid = user.uid || firebaseUser.uid;
-        const apiUrl = `${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`;
+        // Try multiple lookup methods to handle timing issues
+        let profile = null;
+        let lookupMethod = '';
         
-        try {
-          const response = await fetch(apiUrl, {
-            headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
-          });
-          
-          if (response.ok) {
-            const profile = await response.json();
-            console.log('🔍 Backend profile status:', {
-              verificationStatus: profile.verificationStatus,
-              isVerified: profile.isVerified
+        // Method 1: Try Firebase UID lookup
+        const firebaseUid = user.uid || firebaseUser.uid;
+        if (firebaseUid) {
+          try {
+            const firebaseIdToken = await firebaseUser.getIdToken();
+            const apiUrl = `${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`;
+            console.log('🔍 Trying Firebase UID lookup:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
             });
             
-            if (profile.verificationStatus === 'pending' && !profile.isVerified) {
-              console.log('🔍 Backend confirms pending status, showing under review message');
-              setShowUnderReviewMessage(true);
-              setVerificationStatus('pending');
-              setIsVerified(false);
-            } else if (profile.isVerified === true) {
-              console.log('🔍 Backend confirms user is verified, hiding under review message');
-              setShowUnderReviewMessage(false);
-              setVerificationStatus(profile.verificationStatus);
-              setIsVerified(true);
-              
-              // Update local storage to reflect verified status
-              try {
-                const userData = await AsyncStorage.getItem('@user_data');
-                if (userData) {
-                  const user = JSON.parse(userData);
-                  user.verificationStatus = profile.verificationStatus;
-                  user.isVerified = true;
-                  await AsyncStorage.setItem('@user_data', JSON.stringify(user));
-                  console.log('🔍 Updated local storage with verified status');
-                }
-              } catch (error) {
-                console.error('🔍 Error updating local storage:', error);
-              }
+            if (response.ok) {
+              profile = await response.json();
+              lookupMethod = 'firebase-uid';
+              console.log('🔍 Successfully found user via Firebase UID');
             } else {
-              console.log('🔍 Backend status unclear, showing under review message');
-              setShowUnderReviewMessage(true);
-              setVerificationStatus(profile.verificationStatus);
-              setIsVerified(profile.isVerified);
+              console.log('🔍 Firebase UID lookup failed:', response.status);
             }
-          } else {
-            console.log('🔍 Failed to fetch backend status, showing under review message based on local data');
+          } catch (error) {
+            console.log('🔍 Firebase UID lookup error:', error.message);
+          }
+        }
+        
+        // Method 2: Try phone number lookup (fallback)
+        if (!profile && user.phoneNumber) {
+          try {
+            const firebaseIdToken = await firebaseUser.getIdToken();
+            const apiUrl = `${API_BASE_URL}/users/by-phone/${user.phoneNumber}`;
+            console.log('🔍 Trying phone number lookup:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+            });
+            
+            if (response.ok) {
+              profile = await response.json();
+              lookupMethod = 'phone-number';
+              console.log('🔍 Successfully found user via phone number');
+            } else {
+              console.log('🔍 Phone number lookup failed:', response.status);
+            }
+          } catch (error) {
+            console.log('🔍 Phone number lookup error:', error.message);
+          }
+        }
+        
+        // Method 3: Try MongoDB ID lookup (final fallback)
+        if (!profile && (user.id || user._id)) {
+          try {
+            const firebaseIdToken = await firebaseUser.getIdToken();
+            const userId = user.id || user._id;
+            const apiUrl = `${API_BASE_URL}/users/${userId}`;
+            console.log('🔍 Trying MongoDB ID lookup:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+            });
+            
+            if (response.ok) {
+              profile = await response.json();
+              lookupMethod = 'mongodb-id';
+              console.log('🔍 Successfully found user via MongoDB ID');
+            } else {
+              console.log('🔍 MongoDB ID lookup failed:', response.status);
+            }
+          } catch (error) {
+            console.log('🔍 MongoDB ID lookup error:', error.message);
+          }
+        }
+        
+        // Process the result
+        if (profile) {
+          console.log('🔍 Backend profile status (found via', lookupMethod, '):', {
+            verificationStatus: profile.verificationStatus,
+            isVerified: profile.isVerified
+          });
+          
+          if (profile.verificationStatus === 'pending' && !profile.isVerified) {
+            console.log('🔍 Backend confirms pending status, showing under review message');
             setShowUnderReviewMessage(true);
             setVerificationStatus('pending');
             setIsVerified(false);
+          } else if (profile.isVerified === true) {
+            console.log('🔍 Backend confirms user is verified, hiding under review message');
+            setShowUnderReviewMessage(false);
+            setVerificationStatus(profile.verificationStatus);
+            setIsVerified(true);
+            
+            // Update local storage to reflect verified status
+            try {
+              const userData = await AsyncStorage.getItem('@user_data');
+              if (userData) {
+                const user = JSON.parse(userData);
+                user.verificationStatus = profile.verificationStatus;
+                user.isVerified = true;
+                await AsyncStorage.setItem('@user_data', JSON.stringify(user));
+                console.log('🔍 Updated local storage with verified status');
+              }
+            } catch (error) {
+              console.error('🔍 Error updating local storage:', error);
+            }
+          } else {
+            console.log('🔍 Backend status unclear, showing under review message');
+            setShowUnderReviewMessage(true);
+            setVerificationStatus(profile.verificationStatus);
+            setIsVerified(profile.isVerified);
           }
-        } catch (error) {
-          console.error('🔍 Error fetching backend status:', error);
+        } else {
+          console.log('🔍 All lookup methods failed, showing under review message based on local data');
+          console.log('🔍 This might be a timing issue - user record not yet created in database');
           setShowUnderReviewMessage(true);
           setVerificationStatus('pending');
           setIsVerified(false);
