@@ -3,7 +3,7 @@ const axios = require('axios');
 
 // Test configuration
 const TEST_CONFIG = {
-  BASE_URL: 'http://localhost:5000',
+  BASE_URL: 'https://freelancer-backend-jv21.onrender.com',
   MERCHANT_ID: 'TEST-M23OKIGC1N363_25081',
   CLIENT_SECRET: 'OWFkNzQxNjAtZjQ2Yi00YjRkLWE0ZDMtOWQxMzQ0NWZiMGZm',
   PHONEPE_BASE_URL: 'https://api-preprod.phonepe.com/apis/pg-sandbox',

@@ -375,7 +375,7 @@ function submitVerification() {
     };
 
     // Send to backend API
-    fetch('http://localhost:5000/api/verifications', {
+    fetch('https://freelancer-backend-jv21.onrender.com/api/verifications', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
