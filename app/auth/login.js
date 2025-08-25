@@ -126,6 +126,13 @@ export default function LoginScreen() {
               }
             }
             const authData = JSON.parse(responseText);
+            console.log('🔍 Backend auth response:', {
+              user: authData.user,
+              isNewUser: authData.isNewUser,
+              needsVerification: authData.needsVerification,
+              verificationStatus: authData.verificationStatus,
+              isRejected: authData.isRejected
+            });
             await AsyncStorage.setItem('@user_data', JSON.stringify({
               uid: user.uid,
               phoneNumber: user.phoneNumber,
@@ -160,6 +167,12 @@ export default function LoginScreen() {
                 router.replace('/client/home');
               } else {
                 // For freelancers
+                console.log('🔍 Freelancer login - checking verification status:', {
+                  needsVerification: authData.needsVerification,
+                  verificationStatus: authData.verificationStatus,
+                  isRejected: authData.isRejected
+                });
+                
                 if (authData.isRejected) {
                   // Rejected user - go to dashboard to show rejection modal
                   console.log('Login: Navigating to freelancer home (rejected user)');
@@ -172,10 +185,14 @@ export default function LoginScreen() {
                   // Verified freelancer - go to dashboard
                   console.log('Login: Navigating to freelancer home (verified)');
                   router.replace('/freelancer/home');
-                } else {
+                } else if (authData.needsVerification) {
                   // User needs to complete verification - go to manual verification
-                  console.log('Login: Navigating to manual verification');
+                  console.log('Login: Navigating to manual verification (needsVerification: true)');
                   router.push(`/auth/manual-verification?userId=${authData.user.id}`);
+                } else {
+                  // Default case - go to dashboard
+                  console.log('Login: Navigating to freelancer home (default case)');
+                  router.replace('/freelancer/home');
                 }
               }
             }, 1000);
