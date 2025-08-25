@@ -477,30 +477,6 @@ export default function ManualVerificationScreen() {
         return;
       }
 
-      // Get Firebase UID if available
-      let firebaseUid = null;
-      try {
-        const firebaseUser = auth().currentUser;
-        if (firebaseUser) {
-          firebaseUid = firebaseUser.uid;
-          console.log('🔍 Firebase UID from current user:', firebaseUid);
-        } else {
-          // Try to get Firebase UID from stored user data
-          const userData = await AsyncStorage.getItem('@user_data');
-          console.log('🔍 Raw stored user data:', userData);
-          if (userData) {
-            const user = JSON.parse(userData);
-            console.log('🔍 Parsed stored user data:', user);
-            firebaseUid = user.uid || user.firebaseUid;
-            console.log('🔍 Firebase UID from stored data:', firebaseUid);
-          } else {
-            console.log('🔍 No stored user data found');
-          }
-        }
-      } catch (error) {
-        console.log('🔍 No Firebase user available:', error.message);
-      }
-
       // Prepare verification data
       const verificationData = {
         firstName: name.split(' ')[0] || name,
@@ -523,8 +499,7 @@ export default function ManualVerificationScreen() {
         verificationStatus: 'pending',
         isVerified: false,
         submittedAt: new Date().toISOString(),
-        createUser: !userId || userId.startsWith('temp_'), // Flag to indicate if we need to create a user
-        firebaseUid: firebaseUid // Add Firebase UID if available
+        createUser: !userId || userId.startsWith('temp_') // Flag to indicate if we need to create a user
       };
 
       console.log('📤 Submitting verification data:', verificationData);

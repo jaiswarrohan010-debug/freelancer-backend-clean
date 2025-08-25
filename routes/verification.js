@@ -175,9 +175,7 @@ router.post('/submit', async (req, res) => {
                     pincode: pincode,
                     verificationStatus: verificationStatus || 'pending',
                     isVerified: isVerified || false,
-                    submittedAt: submittedAt || new Date(),
-                    // Add firebaseUid if provided in the request
-                    ...(req.body.firebaseUid && { firebaseUid: req.body.firebaseUid })
+                    submittedAt: submittedAt || new Date()
                 };
                 
                 user = new User(userData);
