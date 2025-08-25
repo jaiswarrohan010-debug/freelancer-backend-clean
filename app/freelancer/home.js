@@ -155,7 +155,7 @@ export default function FreelancerHomeScreen() {
     }
   };
 
-  const checkProfileCompletion = async () => {
+  const checkProfileCompletion = async (retryCount = 0) => {
     try {
       const userData = await AsyncStorage.getItem('@user_data');
       if (!userData) {
@@ -316,54 +316,70 @@ export default function FreelancerHomeScreen() {
             setVerificationStatus(profile.verificationStatus);
             setIsVerified(profile.isVerified);
           }
+          
+          // Set user data for drawer
+          setUserData({
+            name: profile.name,
+            profileImage: profile.profileImage,
+            freelancerId: profile.freelancerId
+          });
+          
+          // Set profile completion status
+          const isComplete = isProfileComplete && profile.isVerified === true;
+          setProfileComplete(isComplete);
         } else {
-          console.log('🔍 All lookup methods failed, showing under review message based on local data');
-          console.log('🔍 This might be a timing issue - user record not yet created in database');
-          setShowUnderReviewMessage(true);
-          setVerificationStatus('pending');
-          setIsVerified(false);
+          console.log('🔍 All lookup methods failed, checking local data for guidance');
+          
+          // Check local storage to see if user just completed verification
+          const userData = await AsyncStorage.getItem('@user_data');
+          if (userData) {
+            const localUser = JSON.parse(userData);
+            console.log('🔍 Local user data:', {
+              verificationStatus: localUser.verificationStatus,
+              needsVerification: localUser.needsVerification,
+              isNewUser: localUser.isNewUser
+            });
+            
+            // If user just completed verification (needsVerification = false, verificationStatus = 'pending')
+            if (localUser.verificationStatus === 'pending' && !localUser.needsVerification) {
+              console.log('🔍 User just completed verification, showing under review message');
+              setShowUnderReviewMessage(true);
+              setVerificationStatus('pending');
+              setIsVerified(false);
+            } else if (localUser.needsVerification && localUser.isNewUser) {
+              console.log('🔍 User needs verification, redirecting to manual verification');
+              router.replace(`/auth/manual-verification?userId=${localUser.id || localUser._id}&phone=${localUser.phoneNumber}&role=${localUser.role}`);
+              return;
+            } else {
+              console.log('🔍 User status unclear, showing under review message as fallback');
+              setShowUnderReviewMessage(true);
+              setVerificationStatus('pending');
+              setIsVerified(false);
+            }
+          } else {
+            console.log('🔍 No local user data, showing under review message as fallback');
+            setShowUnderReviewMessage(true);
+            setVerificationStatus('pending');
+            setIsVerified(false);
+          }
+        }
+        
+        // If no profile found and this is a retry attempt, try again after a delay
+        if (!profile && retryCount < 3) {
+          console.log(`🔍 Profile not found on attempt ${retryCount + 1}, retrying in 2 seconds...`);
+          setTimeout(() => {
+            checkProfileCompletion(retryCount + 1);
+          }, 2000);
+          return;
         }
         
         setProfileChecked(true);
         return;
       }
       
-      // If we reach here, no profile was found by any method
-      console.log('🔍 No profile found by any lookup method');
+      // If we reach here, no profile was found by any method after all retries
+      console.log('🔍 No profile found by any lookup method after all retries');
       setProfileComplete(false);
-      setProfileChecked(true);
-      if (profile.isVerified === true) {
-        console.log('✅ User is verified, no status messages needed');
-        setShowRejectionModal(false);
-        setRejectionReason('');
-        setShowUnderReviewMessage(false);
-      } else {
-        console.log('🔍 User status unclear, no status messages');
-        setShowRejectionModal(false);
-        setRejectionReason('');
-        setShowUnderReviewMessage(false);
-      }
-      
-      // Set user data for drawer
-      setUserData({
-        name: profile.name,
-        profileImage: profile.profileImage,
-        freelancerId: profile.freelancerId
-      });
-      console.log('Profile completion status:', isComplete);
-      console.log('Profile completion check:', {
-        name: Boolean(profile.name && typeof profile.name === 'string' && profile.name.trim()),
-        address: Boolean(profile.address && typeof profile.address === 'string' && profile.address.trim()),
-        gender: Boolean(profile.gender && typeof profile.gender === 'string' && profile.gender.trim()),
-        profileImage: Boolean(profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim()),
-        experience: Boolean(profile.experience && typeof profile.experience === 'string' && profile.experience.trim()),
-        skills: Boolean(profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0),
-        isProfileComplete,
-        isVerified: profile.isVerified === true,
-        isComplete,
-        freelancerId: profile.freelancerId
-      });
-      setProfileComplete(isComplete);
       setProfileChecked(true);
     } catch (e) {
       setProfileComplete(false);
