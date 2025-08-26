@@ -400,7 +400,7 @@ router.patch('/users/:id/verification-status', authenticateAdmin, async (req, re
             adminComments
         };
         
-        if (verificationStatus === 'approved') {
+        if (verificationStatus === 'verified') {
             updateData.verifiedAt = verifiedAt || new Date();
             
             // Generate unique Freelancer ID for approved users
@@ -624,7 +624,7 @@ router.post('/verifications/:id/approve', authenticateAdmin, async (req, res) =>
             user.profileImage = verification.profileImage;
             user.documents = verification.documents;
             user.deliveryWork = verification.deliveryWork;
-            user.verificationStatus = 'approved';
+            user.verificationStatus = 'verified';
             user.isVerified = true;
             user.verifiedAt = new Date();
             user.adminComments = adminComments;

@@ -13,16 +13,27 @@
     "cors": "^2.8.5",
     "debug": "~2.6.9",
     "dotenv": "^16.5.0",
+    "expo-constants": "^17.1.7",
     "expo-image-picker": "^16.1.4",
+    "expo-linking": "^7.1.7",
     "expo-router": "^5.1.4",
+    "expo-splash-screen": "^0.30.10",
+    "expo-status-bar": "^2.2.3",
     "express": "~4.16.1",
     "firebase-admin": "^13.4.0",
     "jsonwebtoken": "^9.0.2",
+    "metro": "^0.81.5",
+    "metro-core": "^0.81.5",
+    "metro-runtime": "^0.81.5",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.0",
     "morgan": "~1.9.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "tesseract.js": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   }
 }

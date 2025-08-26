@@ -316,7 +316,7 @@ router.post('/:id/approve', firebaseAuth, async (req, res) => {
 
         // Update user status and documents
         const userUpdateData = {
-            verificationStatus: 'approved',
+            verificationStatus: 'verified',
             isVerified: true,
             adminComments: adminComments
         };
