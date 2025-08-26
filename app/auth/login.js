@@ -195,6 +195,7 @@ export default function LoginScreen() {
               verificationStatus: authData.verificationStatus,
               isRejected: authData.isRejected
             });
+            console.log('🔍 Full auth response:', authData);
             // Store fresh user data from backend response
             const freshUserData = {
               uid: user.uid,

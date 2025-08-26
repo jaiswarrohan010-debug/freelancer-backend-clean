@@ -46,9 +46,12 @@ export default function FreelancerHomeScreen() {
       const userData = await AsyncStorage.getItem('@user_data');
       if (userData) {
         const user = JSON.parse(userData);
+        console.log('🔍 Raw user data from storage:', user);
         const userId = user.id || user._id;
         setCurrentUserId(userId);
         console.log('🔍 User ID loaded:', userId);
+      } else {
+        console.log('🔍 No user data found in storage');
       }
     } catch (error) {
       console.error('Error loading current user:', error);
@@ -97,12 +100,14 @@ export default function FreelancerHomeScreen() {
       
       const userData = await AsyncStorage.getItem('@user_data');
       if (!userData) {
+        console.log('🔍 No user data found in storage during profile check');
         setProfileComplete(false);
         setProfileChecked(true);
         return;
       }
       
       const user = JSON.parse(userData);
+      console.log('🔍 User data during profile check:', user);
       const firebaseUser = auth().currentUser;
       if (!firebaseUser) {
         setProfileComplete(false);
