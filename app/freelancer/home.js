@@ -198,6 +198,7 @@ export default function FreelancerHomeScreen() {
                 // Method 1: Try phone number lookup first (most reliable after verification)
         if (user.phoneNumber) {
           try {
+            // Try with Firebase phone number (with country code)
             const apiUrl = `${API_BASE_URL}/users/by-phone/${user.phoneNumber}`;
             console.log('🔍 Trying phone number lookup (primary):', apiUrl);
             
@@ -211,6 +212,25 @@ export default function FreelancerHomeScreen() {
               console.log('🔍 Successfully found user via phone number');
             } else {
               console.log('🔍 Phone number lookup failed:', response.status);
+              
+              // Try without country code as fallback
+              const phoneWithoutCountryCode = user.phoneNumber.replace(/^\+91/, '');
+              if (phoneWithoutCountryCode !== user.phoneNumber) {
+                const fallbackApiUrl = `${API_BASE_URL}/users/by-phone/${phoneWithoutCountryCode}`;
+                console.log('🔍 Trying phone number lookup without country code:', fallbackApiUrl);
+                
+                const fallbackResponse = await fetch(fallbackApiUrl, {
+                  headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (fallbackResponse.ok) {
+                  profile = await fallbackResponse.json();
+                  lookupMethod = 'phone-number-no-country-code';
+                  console.log('🔍 Successfully found user via phone number without country code');
+                } else {
+                  console.log('🔍 Phone number lookup without country code failed:', fallbackResponse.status);
+                }
+              }
             }
           } catch (error) {
             console.log('🔍 Phone number lookup error:', error.message);
@@ -369,7 +389,18 @@ export default function FreelancerHomeScreen() {
               if (localUser.phoneNumber) {
                 console.log('🔍 Attempting to refresh user data using phone number:', localUser.phoneNumber);
                 try {
-                  const response = await fetch(`${API_BASE_URL}/users/by-phone/${localUser.phoneNumber}`);
+                  // Try with Firebase phone number (with country code)
+                  let response = await fetch(`${API_BASE_URL}/users/by-phone/${localUser.phoneNumber}`);
+                  
+                  if (!response.ok) {
+                    // Try without country code as fallback
+                    const phoneWithoutCountryCode = localUser.phoneNumber.replace(/^\+91/, '');
+                    if (phoneWithoutCountryCode !== localUser.phoneNumber) {
+                      console.log('🔍 Trying without country code:', phoneWithoutCountryCode);
+                      response = await fetch(`${API_BASE_URL}/users/by-phone/${phoneWithoutCountryCode}`);
+                    }
+                  }
+                  
                   if (response.ok) {
                     const freshUser = await response.json();
                     console.log('🔍 Found fresh user data:', freshUser._id);
