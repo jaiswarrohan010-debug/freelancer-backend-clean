@@ -99,107 +99,88 @@ export default function FreelancerHomeScreen() {
       }
       
       const userData = await AsyncStorage.getItem('@user_data');
-      if (!userData) {
-        console.log('🔍 No user data found in storage during profile check');
-        setProfileComplete(false);
-        setProfileChecked(true);
-        return;
-      }
-      
-      const user = JSON.parse(userData);
-      console.log('🔍 User data during profile check:', user);
       const firebaseUser = auth().currentUser;
+      
       if (!firebaseUser) {
+        console.log('🔍 No Firebase user found during profile check');
         setProfileComplete(false);
         setProfileChecked(true);
         return;
       }
       
-      // Check if user needs verification
-      if (user.needsVerification && user.isNewUser) {
-        console.log('🔍 User needs verification, redirecting to manual verification');
-        router.replace(`/auth/manual-verification?userId=${user.id || user._id}&phone=${user.phoneNumber}&role=${user.role}`);
+      let userId = null;
+      
+      // Try to get user ID from storage first
+      if (userData) {
+        const user = JSON.parse(userData);
+        console.log('🔍 User data during profile check:', user);
+        userId = user.id || user._id;
+      }
+      
+      // If no user ID from storage, try to get it from Firebase user
+      if (!userId && firebaseUser.uid) {
+        console.log('🔍 No user ID in storage, trying to get from Firebase user');
+        try {
+          const firebaseIdToken = await firebaseUser.getIdToken();
+          // Try to get user by Firebase UID using the existing route
+          const userResponse = await fetch(`${API_BASE_URL}/users/by-firebase-uid/${firebaseUser.uid}`, {
+            headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+          });
+          
+          if (userResponse.ok) {
+            const userProfile = await userResponse.json();
+            userId = userProfile._id;
+            console.log('🔍 Got user ID from Firebase UID lookup:', userId);
+          }
+        } catch (error) {
+          console.log('🔍 Firebase UID lookup failed:', error.message);
+        }
+      }
+      
+      if (!userId) {
+        console.log('🔍 No user ID found from any source');
+        setProfileComplete(false);
+        setProfileChecked(true);
         return;
+      }
+      
+      // Check if user needs verification (only if we have user data from storage)
+      if (userData) {
+        const user = JSON.parse(userData);
+        if (user.needsVerification && user.isNewUser) {
+          console.log('🔍 User needs verification, redirecting to manual verification');
+          router.replace(`/auth/manual-verification?userId=${userId}&phone=${user.phoneNumber}&role=${user.role}`);
+          return;
+        }
       }
       
       // Use MongoDB ID with Firebase authentication for profile lookup
-      if (user.id || user._id) {
-        const userId = user.id || user._id;
-        const firebaseIdToken = await firebaseUser.getIdToken();
-        const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
-          headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
-        });
+      const firebaseIdToken = await firebaseUser.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+      });
+      
+      if (response.ok) {
+        const profile = await response.json();
+        console.log('🔍 Profile found:', profile._id);
         
-        if (response.ok) {
-          const profile = await response.json();
-          console.log('🔍 Profile found:', profile._id);
-          
-          // Hide verification loading
-          setVerificationLoading(false);
-          
-          // Check if profile is complete
-          const isProfileComplete = Boolean(
-            profile.name && profile.name.trim() &&
-            profile.address && profile.address.trim() &&
-            profile.gender && profile.gender.trim() &&
-            profile.profileImage && profile.profileImage.trim() &&
-            profile.experience && profile.experience.trim() &&
-            profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0
-          );
-          
-          // Set verification status
-          setIsVerified(profile.isVerified === true);
-          setVerificationStatus(profile.verificationStatus || 'pending');
-          setFreelancerId(profile.freelancerId || '');
-          setHasBasicProfile(isProfileComplete);
-          
-          // Handle verification status
-          const status = profile.verificationStatus?.toLowerCase() || 'pending';
-          
-          if (status === 'rejected') {
-            setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
-            setShowRejectionModal(true);
-            setShowUnderReviewMessage(false);
-          } else if (status === 'pending' || (!profile.isVerified && profile.verificationStatus)) {
-            setShowUnderReviewMessage(true);
-            setShowRejectionModal(false);
-          } else if (profile.isVerified === true) {
-            setShowUnderReviewMessage(false);
-            setShowRejectionModal(false);
-            
-            // Update local storage
-            try {
-              const userData = await AsyncStorage.getItem('@user_data');
-              if (userData) {
-                const user = JSON.parse(userData);
-                user.verificationStatus = profile.verificationStatus;
-                user.isVerified = true;
-                await AsyncStorage.setItem('@user_data', JSON.stringify(user));
-              }
-            } catch (error) {
-              console.error('Error updating local storage:', error);
-            }
-          } else {
-            setShowUnderReviewMessage(true);
-          }
-          
-          // Set user data for drawer
-          setUserData({
-            name: profile.name,
-            profileImage: profile.profileImage,
-            freelancerId: profile.freelancerId
-          });
-          
-          // Set profile completion status
-          setProfileComplete(isProfileComplete && profile.isVerified === true);
-          setProfileChecked(true);
-        } else {
-          console.log('🔍 Profile lookup failed:', response.status);
-          setProfileComplete(false);
-          setProfileChecked(true);
-        }
+        // Hide verification loading
+        setVerificationLoading(false);
+        
+        // Check if profile is complete
+        const isProfileComplete = Boolean(
+          profile.name && profile.name.trim() &&
+          profile.address && profile.address.trim() &&
+          profile.gender && profile.gender.trim() &&
+          profile.profileImage && profile.profileImage.trim() &&
+          profile.experience && profile.experience.trim() &&
+          profile.skills && profile.skills.length > 0
+        );
+        
+        setProfileComplete(isProfileComplete && profile.isVerified === true);
+        setProfileChecked(true);
       } else {
-        console.log('🔍 No user ID found');
+        console.log('🔍 Profile lookup failed:', response.status);
         setProfileComplete(false);
         setProfileChecked(true);
       }
