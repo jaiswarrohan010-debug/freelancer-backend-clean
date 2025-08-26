@@ -187,102 +187,105 @@ export default function FreelancerHomeScreen() {
         return;
       }
       
-      // If user has submitted verification, check backend for latest status
-      if (user.verificationStatus === 'pending' && !user.needsVerification) {
-        console.log('🔍 User has submitted verification, checking backend for latest status');
-        
-        // Try multiple lookup methods to handle timing issues
-        let profile = null;
-        let lookupMethod = '';
-        
-                // Method 1: Try phone number lookup first (most reliable after verification)
-        if (user.phoneNumber) {
-          try {
-            // Try with Firebase phone number (with country code)
-            const apiUrl = `${API_BASE_URL}/users/by-phone/${user.phoneNumber}`;
-            console.log('🔍 Trying phone number lookup (primary):', apiUrl);
+      // Use single, consistent lookup method: MongoDB ID with Firebase authentication
+      if (user.id || user._id) {
+        try {
+          const userId = user.id || user._id;
+          const firebaseIdToken = await firebaseUser.getIdToken();
+          const apiUrl = `${API_BASE_URL}/users/${userId}`;
+          console.log('🔍 Using consistent lookup method: MongoDB ID with Firebase auth:', apiUrl);
+          
+          const response = await fetch(apiUrl, {
+            headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
+          });
+          
+          if (response.ok) {
+            const profile = await response.json();
+            console.log('🔍 Successfully found user via MongoDB ID with Firebase auth');
             
-            const response = await fetch(apiUrl, {
-              headers: { 'Content-Type': 'application/json' }
+            // Process the result
+            console.log('🔍 Backend profile status:', {
+              verificationStatus: profile.verificationStatus,
+              isVerified: profile.isVerified
             });
             
-            if (response.ok) {
-              profile = await response.json();
-              lookupMethod = 'phone-number';
-              console.log('🔍 Successfully found user via phone number');
-            } else {
-              console.log('🔍 Phone number lookup failed:', response.status);
+            // Hide verification loading spinner since we found the profile
+            setVerificationLoading(false);
+            
+            // Check if profile is complete (all required fields filled)
+            const isProfileComplete = Boolean(
+              profile.name && typeof profile.name === 'string' && profile.name.trim() &&
+              profile.address && typeof profile.address === 'string' && profile.address.trim() &&
+              profile.gender && typeof profile.gender === 'string' && profile.gender.trim() &&
+              profile.profileImage && typeof profile.profileImage === 'string' && profile.profileImage.trim() &&
+              profile.experience && typeof profile.experience === 'string' && profile.experience.trim() &&
+              profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0
+            );
+            
+            // Set verification status
+            setIsVerified(profile.isVerified === true);
+            setVerificationStatus(profile.verificationStatus || 'pending');
+            setFreelancerId(profile.freelancerId || '');
+            setHasBasicProfile(isProfileComplete);
+            
+            // Handle rejection status
+            const normalizedStatus = profile.verificationStatus ? profile.verificationStatus.trim().toLowerCase() : '';
+            
+            if (normalizedStatus === 'rejected') {
+              console.log('❌ User is rejected, showing rejection modal');
+              setRejectionReason(profile.adminComments || 'Verification documents were not clear or incomplete');
+              setShowRejectionModal(true);
+              setShowUnderReviewMessage(false);
+            } else if (normalizedStatus === 'pending' || (!profile.isVerified && profile.verificationStatus)) {
+              console.log('⏳ User status is pending, showing "Under Review" message');
+              setShowUnderReviewMessage(true);
+              setShowRejectionModal(false);
+              setRejectionReason('');
+            } else if (profile.isVerified === true) {
+              console.log('✅ User is verified, no status messages needed');
+              setShowUnderReviewMessage(false);
+              setShowRejectionModal(false);
+              setRejectionReason('');
               
-              // Try without country code as fallback
-              const phoneWithoutCountryCode = user.phoneNumber.replace(/^\+91/, '');
-              if (phoneWithoutCountryCode !== user.phoneNumber) {
-                const fallbackApiUrl = `${API_BASE_URL}/users/by-phone/${phoneWithoutCountryCode}`;
-                console.log('🔍 Trying phone number lookup without country code:', fallbackApiUrl);
-                
-                const fallbackResponse = await fetch(fallbackApiUrl, {
-                  headers: { 'Content-Type': 'application/json' }
-                });
-                
-                if (fallbackResponse.ok) {
-                  profile = await fallbackResponse.json();
-                  lookupMethod = 'phone-number-no-country-code';
-                  console.log('🔍 Successfully found user via phone number without country code');
-                } else {
-                  console.log('🔍 Phone number lookup without country code failed:', fallbackResponse.status);
+              // Update local storage to reflect verified status
+              try {
+                const userData = await AsyncStorage.getItem('@user_data');
+                if (userData) {
+                  const user = JSON.parse(userData);
+                  user.verificationStatus = profile.verificationStatus;
+                  user.isVerified = true;
+                  await AsyncStorage.setItem('@user_data', JSON.stringify(user));
+                  console.log('🔍 Updated local storage with verified status');
                 }
+              } catch (error) {
+                console.error('🔍 Error updating local storage:', error);
               }
+            } else {
+              console.log('🔍 Backend status unclear, showing under review message');
+              setShowUnderReviewMessage(true);
+              setVerificationStatus(profile.verificationStatus);
+              setIsVerified(profile.isVerified);
             }
-          } catch (error) {
-            console.log('🔍 Phone number lookup error:', error.message);
-          }
-        }
-
-        // Method 2: Try MongoDB ID lookup (fallback)
-        if (!profile && (user.id || user._id)) {
-          try {
-            const userId = user.id || user._id;
-            const apiUrl = `${API_BASE_URL}/users/${userId}`;
-            console.log('🔍 Trying MongoDB ID lookup (fallback):', apiUrl);
             
-            const response = await fetch(apiUrl, {
-              headers: { 'Content-Type': 'application/json' }
+            // Set user data for drawer
+            setUserData({
+              name: profile.name,
+              profileImage: profile.profileImage,
+              freelancerId: profile.freelancerId
             });
             
-            if (response.ok) {
-              profile = await response.json();
-              lookupMethod = 'mongodb-id';
-              console.log('🔍 Successfully found user via MongoDB ID');
-            } else {
-              console.log('🔍 MongoDB ID lookup failed:', response.status);
-            }
-          } catch (error) {
-            console.log('🔍 MongoDB ID lookup error:', error.message);
+            // Set profile completion status
+            const isComplete = isProfileComplete && profile.isVerified === true;
+            setProfileComplete(isComplete);
+            setProfileChecked(true);
+            return;
+          } else {
+            console.log('🔍 MongoDB ID lookup failed:', response.status);
           }
+        } catch (error) {
+          console.log('🔍 MongoDB ID lookup error:', error.message);
         }
-
-        // Method 2: Try Firebase UID lookup (fallback - not deployed yet)
-        if (!profile && (user.uid || firebaseUser.uid)) {
-          try {
-            const firebaseUid = user.uid || firebaseUser.uid;
-            const firebaseIdToken = await firebaseUser.getIdToken();
-            const apiUrl = `${API_BASE_URL}/users/by-firebase-uid/${firebaseUid}`;
-            console.log('🔍 Trying Firebase UID lookup (fallback):', apiUrl);
-            
-            const response = await fetch(apiUrl, {
-              headers: { 'Authorization': `Bearer ${firebaseIdToken}` }
-            });
-            
-            if (response.ok) {
-              profile = await response.json();
-              lookupMethod = 'firebase-uid';
-              console.log('🔍 Successfully found user via Firebase UID');
-            } else {
-              console.log('🔍 Firebase UID lookup failed:', response.status, '- Backend route not deployed yet');
-            }
-          } catch (error) {
-            console.log('🔍 Firebase UID lookup error:', error.message);
-          }
-        }
+      }
 
 
         
@@ -432,25 +435,14 @@ export default function FreelancerHomeScreen() {
             setIsVerified(false);
           }
         }
-        
-        // If no profile found and this is a retry attempt, try again after a delay
-        if (!profile && retryCount < 3) {
-          console.log(`🔍 Profile not found on attempt ${retryCount + 1}, retrying in 2 seconds...`);
-          setTimeout(() => {
-            checkProfileCompletion(retryCount + 1);
-          }, 2000);
-          return;
-        }
-        
-        setProfileChecked(true);
-        return;
       }
       
-      // If we reach here, no profile was found by any method after all retries
-      console.log('🔍 No profile found by any lookup method after all retries');
+      // If we reach here, no profile was found
+      console.log('🔍 No profile found - user ID missing or lookup failed');
       setProfileComplete(false);
       setProfileChecked(true);
     } catch (e) {
+      console.error('🔍 Error in checkProfileCompletion:', e);
       setProfileComplete(false);
       setProfileChecked(true);
       setHasBasicProfile(false);
