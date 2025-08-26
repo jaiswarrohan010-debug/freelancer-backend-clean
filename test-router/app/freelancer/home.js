@@ -478,8 +478,8 @@ export default function FreelancerHomeScreen() {
         return;
       }
       
-      // If we reach here, no profile was found by any method after all retries
-      console.log('🔍 No profile found by any lookup method after all retries');
+      // If we reach here, no profile was found
+      console.log('🔍 No profile found - user ID missing or lookup failed');
       setProfileComplete(false);
       setProfileChecked(true);
     } catch (e) {

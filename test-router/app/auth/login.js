@@ -247,7 +247,7 @@ export default function LoginScreen() {
                   // User has submitted verification and is under review - go to dashboard
                   console.log('Login: Navigating to freelancer home (pending verification)');
                   router.replace('/freelancer/home');
-                } else if (authData.verificationStatus === 'approved') {
+                } else if (authData.verificationStatus === 'verified') {
                   // Verified freelancer - go to dashboard
                   console.log('Login: Navigating to freelancer home (verified)');
                   router.replace('/freelancer/home');
